@@ -47,11 +47,12 @@ Angaben welche der gewählten Datastreams-Properties zur Befüllung des Info-Tab
       "params": {
         "headerProperties": {
           "location": "Standort",
-          "district":  "Bezirk",
+          "district": "Bezirk",
           "installationDate": "Inbetriebnahme",
           "direction": {
             "name": "Richtung",
             "isSelect": true,
+            "isMultiple": true,
             "default": "Beide"
           },
           "periodLengthLabel": {
@@ -62,22 +63,23 @@ Angaben welche der gewählten Datastreams-Properties zur Befüllung des Info-Tab
         },
         "headerPhotos": true,
         "archiveStartDate": "2015-01-01",
+        "defaultLabel": "Anzahl",
         "intervals": {
           "field": "periodLengthLabel",
           "values": {
-            "15 Minuten": {"unit":  "minutes", "value":  15, "startOf":  "day", "defaultLength":  1, "maxLength": 90 },
-            "Stunde": {"unit":  "hours", "value":  1, "startOf":  "day", "defaultLength":  1, "maxLength": 366},
-            "Tag": {"unit":  "days", "value":  1, "startOf":  "day", "defaultLength":  7, "maxLength": 3660},
-            "Woche": {"unit":  "days", "value":  7, "startOf":  "isoWeek", "selectWeek":  true, "defaultLength":  52, "maxLength": 520},
-            "Monat": {"unit":  "months", "value":  1, "startOf":  "month", "defaultLength":  12, "maxLength": 120},
-            "Jahr": {"unit":  "years", "value":  1, "startOf":  "year", "defaultLength":  5, "maxLength": 20}
+            "15 Minuten": {"unit": "minutes", "value": 15, "startOf": "day", "defaultLength": 1, "maxLength": 90},
+            "Stunde": {"unit": "hours", "value": 1, "startOf": "day", "defaultLength": 1, "maxLength": 366},
+            "Tag": {"unit": "days", "value": 1, "startOf": "day", "defaultLength": 7, "maxLength": 3660},
+            "Woche": {"unit": "days", "value": 7, "startOf": "isoWeek", "selectWeek": true, "defaultLength": 52, "maxLength": 520},
+            "Monat": {"unit": "months", "value": 1, "startOf": "month", "defaultLength": 12, "maxLength": 120},
+            "Jahr": {"unit": "years", "value": 1, "startOf": "year", "defaultLength": 5, "maxLength": 20}
           }
         },
         "infoSelects": {
-          "day": {"periodLengthLabel":  "Stunde"},
-          "week": {"periodLengthLabel":  "Woche"},
-          "month": {"periodLengthLabel":  "Tag"},
-          "year": {"periodLengthLabel":  "Tag"}
+          "day": {"periodLengthLabel": "Tag"},
+          "week": {"periodLengthLabel": "Woche"},
+          "month": {"periodLengthLabel": "Tag"},
+          "year": {"periodLengthLabel": "Tag"}
         }
       }
     }
