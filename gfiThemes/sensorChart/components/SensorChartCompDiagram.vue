@@ -88,15 +88,20 @@ export default {
             type: Boolean,
             required: false,
             default: true
+        },
+        colors: {
+            type: Array,
+            required: true
+        },
+        interpolatedColors: {
+            type: Array,
+            required: true
         }
     },
     data () {
         return {
             chartData: {},
             ctx: "",
-            // colors: ["#337ab7", "#d73027", "#fc8d59", "#91bfdb", "#542788"],
-            colors: ["#7777ff", "#ff7777", "#ff9f40", "#3ea041", "#ff77ff"],
-            interpolatedColors: ["#0000ff", "#ff0000", "#ff7f00", "#00a006", "#ff00ff"],
             fontColorGraph: "black",
             fontColorLegend: "#555555",
             fontSizeGraph: 10,
@@ -228,8 +233,8 @@ export default {
             if (!Array.isArray(apiData) || apiData.length === 0 || typeof apiData[0] !== "object" || apiData[0] === null || Object.keys(apiData[0]).length === 0) {
                 return [];
             }
-            const meansOfTransportKey = Object.keys(apiData[0])[0],
-                labelsXAxis = [],
+            let meansOfTransportKey = Object.keys(apiData[0])[0];
+            const labelsXAxis = [],
                 datasets = [],
                 keysOfFirstDataset = Object.keys(apiData[0][meansOfTransportKey]);
 
@@ -237,63 +242,66 @@ export default {
                 labelsXAxis.push(datetime);
             });
 
-            apiData.forEach((dataObj, idx) => {
-                if (!Object.prototype.hasOwnProperty.call(dataObj, meansOfTransportKey)) {
-                    return;
-                }
+            apiData.forEach((dataset, timeStampIdx) => {
+                Object.entries(dataset).forEach((dataObj, idx) => {
+                    meansOfTransportKey = dataObj[0];
 
-                const datetimes = Object.keys(dataObj[meansOfTransportKey]),
+                    const datetimes = Object.keys(dataObj[1]),
 
-                    origData = Object.values(dataObj[meansOfTransportKey]),
-                    useColorIdx = apiData.length - (idx + 1);
+                        origData = Object.values(dataObj[1]),
+                        useColorIdx = (timeStampIdx * Object.keys(dataset).length + idx) % colors.length;
 
-                if (this.doInterpolate) {
-                    datasets.push({
-                        label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) : "",
-                        data: origData,
-                        backgroundColor: Array.isArray(colors) ? colors[useColorIdx] : "",
-                        borderColor: Array.isArray(colors) ? colors[useColorIdx] : "",
-                        spanGaps: false,
-                        fill: false,
-                        borderWidth: 1,
-                        pointRadius: 1,
-                        pointHoverRadius: 3,
-                        showLine: false,
-                        datetimes
-                    });
+                    if (this.doInterpolate) {
+                        datasets.push({
+                            label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) : "",
+                            data: origData,
+                            backgroundColor: Array.isArray(colors) ? colors[useColorIdx] : "",
+                            borderColor: Array.isArray(colors) ? colors[useColorIdx] : "",
+                            spanGaps: false,
+                            fill: false,
+                            borderWidth: 1,
+                            pointRadius: 1,
+                            pointHoverRadius: 3,
+                            showLine: false,
+                            datetimes,
+                            showInLegend: true // extra flag for hide or show legend
+                        });
 
-                    const interpolatedData = this.interpolateData(origData, Math.round(origData.length / 50));
+                        const interpolatedData = this.interpolateData(origData, Math.round(origData.length / 50));
 
-                    datasets.push({
-                        label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) + "(" + this.$t("additional:modules.tools.gfi.themes.sensorChart.interpolated") + ")" : "",
-                        data: interpolatedData,
-                        backgroundColor: this.interpolatedColors[useColorIdx],
-                        borderColor: this.interpolatedColors[useColorIdx],
-                        spanGaps: true,
-                        fill: false,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        tension: 0.4,
-                        datetimes
-                    });
-                }
-                else { // do not interpolate, mostly in diagrams wout that many points
+                        datasets.push({
+                            label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) + "(" + this.$t("additional:modules.tools.gfi.themes.sensorChart.interpolated") + ")" : "",
+                            data: interpolatedData,
+                            backgroundColor: this.interpolatedColors[useColorIdx],
+                            borderColor: this.interpolatedColors[useColorIdx],
+                            spanGaps: true,
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            tension: 0.4,
+                            datetimes,
+                            showInLegend: false // extra flag for hide or show legend (interpolated data should not be shown)
+                        });
+                    }
+                    else { // do not interpolate, mostly in diagrams wout that many points
                     // do show lines between points with tension, use stronger colors
-                    datasets.push({
-                        label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) : "",
-                        data: origData,
-                        backgroundColor: this.interpolatedColors[useColorIdx], // use stronger colors for normal line then
-                        borderColor: this.interpolatedColors[useColorIdx],
-                        spanGaps: false,
-                        fill: false,
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointHoverRadius: 3,
-                        tension: 0.4,
-                        datetimes
-                    });
-                }
+                        datasets.push({
+                            label: typeof callbackRenderLabelLegend === "function" ? callbackRenderLabelLegend(meansOfTransportKey) : "",
+                            data: origData,
+                            backgroundColor: this.interpolatedColors[useColorIdx], // use stronger colors for normal line then
+                            borderColor: this.interpolatedColors[useColorIdx],
+                            spanGaps: false,
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointHoverRadius: 3,
+                            tension: 0.4,
+                            datetimes,
+                            showInLegend: true // extra flag for hide or show legend
+                        });
+                    }
+                });
             });
 
             return {labels: labelsXAxis, datasets};
@@ -337,15 +345,29 @@ export default {
                         }
                     },
                     legend: {
-                        display: true,
+                        // display: true,
                         onClick: (e) => e.stopPropagation(),
-                        labels: {
-                            usePointStyle: true,
-                            fontSize: options.fontSizeLegend,
-                            fontColorLegend: options.fontColorLegend
-                        },
-                        align: "start"
+                        // labels: {
+                        //     usePointStyle: true,
+                        //     fontSize: options.fontSizeLegend,
+                        //     fontColorLegend: options.fontColorLegend
+                        // },
+                        // align: "start"
+                        display: false
                     },
+                    legendCallback: function (chart) {
+                        const text = [];
+
+                        text.push("<p>");
+                        for (let i = 0; i < chart.data.datasets.length; i++) {
+                            if (chart.data.datasets[i].showInLegend) {
+                                text.push("<span style=\"display:inline-block; width:15px; height: 15px; background-color:" + chart.data.datasets[i].borderColor + ";\"></span>&nbsp;" + chart.data.datasets[i].label + "&nbsp;&nbsp;&nbsp;&nbsp;");
+                            }
+                        }
+                        text.push("</p>");
+                        return text.join("");
+                    },
+
                     tooltips: {
                         bodyFontColor: options.colorTooltipFont,
                         backgroundColor: options.colorTooltipBack,
@@ -450,8 +472,15 @@ export default {
 </script>
 
 <template>
-    <div class="graph">
-        <canvas />
+    <div>
+        <div
+            v-if="chart"
+            class="custom-legend"
+            v-html="chart.generateLegend()"
+        />
+        <div class="graph">
+            <canvas />
+        </div>
     </div>
 </template>
 

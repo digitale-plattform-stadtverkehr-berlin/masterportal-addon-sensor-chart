@@ -5,7 +5,11 @@ Entwicklung Masterportal Addon SensorChart (gfiTheme)
 
 Das Plugin ist eine Weiterentwicklung des [TrafficCount-Plugins](https://github.com/digitale-plattform-stadtverkehr-berlin/masterportal-addon-traffic-count) und dient zur Darstellung von Messwerten aus einem STA-Server.
 
-Das Plugin ist mit der Masterportal Version 2.30.0 getestet.
+Das Plugin ist mit der Masterportal Version 2.40.1 getestet.
+
+Das Addon im Einsatz kann in der [Digitalen Plattform Stadtverkehr Berlin](https://viz.berlin.de/site/_masterportal/berlin/index.html?Map/layerIds=basemap_raster_farbe,TEU,EcoCounter&visibility=true,true,true&transparency=0,0,0&Map/zoomLevel=4) betrachtet werden.
+Die dazu passende [Konfiguration](https://github.com/digitale-plattform-stadtverkehr-berlin/masterportal-dps-config/blob/master/resources/services-internet.json) steht ebenfalls zu Verfügung 
+
 
 ## SensorChart Parameter
 
@@ -34,8 +38,6 @@ Angaben zu dem Datastream-Property das Informationen über die Intervall-Größe
 **infoSelects**
 
 Angaben welche der gewählten Datastreams-Properties zur Befüllung des Info-Tabs überschrieben werden.
-
-Beinhaltet Informationen über die 
 
 ### Vollständiges Beispiel Parameter:
 

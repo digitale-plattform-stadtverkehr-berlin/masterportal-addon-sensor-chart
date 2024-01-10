@@ -19,17 +19,12 @@ export default {
     },
     data () {
         return {
-            customStyle: {},
             lastUpdate: "",
             currentTabId: "infos",
             dayInterval: this.motDayInterval
         };
     },
     computed: {
-        indication: function () {
-            return this.$t("additional:modules.tools.gfi.themes.sensorChart.notice");
-        },
-
         lastupdateLabel: function () {
             return this.$t("additional:modules.tools.gfi.themes.sensorChart.lastupdateLabel");
         }
@@ -98,19 +93,6 @@ export default {
         <div class="update">
             <p><strong>{{ lastupdateLabel }}:</strong> {{ lastUpdate }}</p>
         </div>
-        <div
-            class="indication"
-            :style="customStyle"
-        >
-            {{ indication }}
-        </div>
     </div>
 </template>
 
-<style lang="scss" scoped>
-
-.indication {
-    font-size: 10px;
-    left: 0px;
-}
-</style>

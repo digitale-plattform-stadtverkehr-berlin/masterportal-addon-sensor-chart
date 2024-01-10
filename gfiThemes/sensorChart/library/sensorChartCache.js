@@ -121,7 +121,8 @@ export class SensorChartCache {
     /**
      * gets the sum for a single day excluding todays last 15 minutes
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} dayInterval measurement interval on day tab
      * @param {String} day the day as String in format YYYY-MM-DD
      * @param {Function} [onupdate] as event function(date, value) fires initialy and anytime server site changes are made
@@ -132,11 +133,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateDay (thingId, selects, dayInterval, day, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+    updateDay (thingId, selects, options, dayInterval, day, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
         const key = "updateDay" + thingId + JSON.stringify(selects) + day;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateDay(thingId, selects, dayInterval, day, (...args) => {
+            (sensorChartApiOpt || this.api).updateDay(thingId, selects, options, dayInterval, day, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -148,9 +149,8 @@ export class SensorChartCache {
     /**
      * gets the speed medium for a single day
      * @param {Integer} thingId the ID of the thing
-     * @param {String} meansOfTransportSpeed the transportation f.e. 'Geschwindigkeit_Kfz'
-     * @param {String} meansOfTransportCount the transportation for count f.e. 'Anzahl_Kfz'
-     * @param {String} dayInterval measurement interval on day tab
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} day the day as String in format YYYY-MM-DD
      * @param {Function} [onupdate] as event function(date, value) fires initialy and anytime server site changes are made
      * @param {Function} [onerror] as function(error) to fire on error
@@ -158,11 +158,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateDaySpeedMedium (thingId, meansOfTransportSpeed, meansOfTransportCount, dayInterval, day, onupdate, onerror, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
-        const key = "updateDaySpeedMedium" + thingId + meansOfTransportSpeed + meansOfTransportCount + dayInterval + day;
+    updateDaySingle (thingId, selects, options, day, onupdate, onerror, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+        const key = "updateDaySingle" + thingId + JSON.stringify(selects) + day;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateDaySpeedMedium(thingId, meansOfTransportSpeed, meansOfTransportCount, dayInterval, day, (...args) => {
+            (sensorChartApiOpt || this.api).updateDaySingle(thingId, selects, options, day, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -174,7 +174,8 @@ export class SensorChartCache {
     /**
      * gets the sum of a year excluding todays last 15 minutes
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(year, value) fires initialy and anytime server site changes are made
      * @param {Function} [onerror] as function(error) to fire on error
@@ -184,11 +185,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateYear (thingId, selects, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+    updateYear (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
         const key = "updateYear" + thingId + JSON.stringify(selects) + year;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateYear(thingId, selects, year, (...args) => {
+            (sensorChartApiOpt || this.api).updateYear(thingId, selects, options, year, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -226,7 +227,8 @@ export class SensorChartCache {
     /**
      * gets the strongest day in the given year excluding today
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(date, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -236,11 +238,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateHighestWorkloadDay (thingId, selects, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+    updateHighestWorkloadDay (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
         const key = "updateHighestWorkloadDay" + thingId + JSON.stringify(selects) + year;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateHighestWorkloadDay(thingId, selects, year, (...args) => {
+            (sensorChartApiOpt || this.api).updateHighestWorkloadDay(thingId, selects, options, year, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -252,7 +254,8 @@ export class SensorChartCache {
     /**
      * gets the strongest week in the given year excluding the current week
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(calendarWeek, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -262,11 +265,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateHighestWorkloadWeek (thingId, selects, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+    updateHighestWorkloadWeek (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
         const key = "updateHighestWorkloadWeek" + thingId + JSON.stringify(selects) + year;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateHighestWorkloadWeek(thingId, selects, year, (...args) => {
+            (sensorChartApiOpt || this.api).updateHighestWorkloadWeek(thingId, selects, options, year, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -278,7 +281,8 @@ export class SensorChartCache {
     /**
      * gets the strongest month in the given year including the current month
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(month, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -288,11 +292,11 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt=null] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateHighestWorkloadMonth (thingId, selects, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
+    updateHighestWorkloadMonth (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, simpleCacheCallOpt = null, sensorChartApiOpt = null) {
         const key = "updateHighestWorkloadMonth" + thingId + JSON.stringify(selects) + year;
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, (callback) => {
-            (sensorChartApiOpt || this.api).updateHighestWorkloadMonth(thingId, selects, year, (...args) => {
+            (sensorChartApiOpt || this.api).updateHighestWorkloadMonth(thingId, selects, options, year, (...args) => {
                 if (typeof callback === "function") {
                     return callback(...args);
                 }
@@ -304,7 +308,8 @@ export class SensorChartCache {
     /**
      * recursive function for updateDataset
      * @param {Integer} thingId the ID of the thing
-     * @param {String} selects the transportation as 'Anzahl_Fahrraeder' or 'Anzahl_Kfz'
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String[]} timeSettings array of time configurations
      * @param {String} timeSettings.interval the interval to call as '15-Min', '1-Stunde' or '1-Woche'
      * @param {String} timeSettings.from the day to start from (inclusive) as String in format YYYY-MM-DD
@@ -317,7 +322,7 @@ export class SensorChartCache {
      * @param {SensorChartApi} [sensorChartApiOpt] the api to use (for testing)
      * @returns {Void}  -
      */
-    updateDatasetHelper (thingId, selects, timeSettings, datasets, onsuccess, observer, onerror, simpleCacheCallOpt, sensorChartApiOpt) {
+    updateDatasetHelper (thingId, selects, options, timeSettings, datasets, onsuccess, observer, onerror, simpleCacheCallOpt, sensorChartApiOpt) {
         const timeSet = Array.isArray(datasets) && Array.isArray(timeSettings) ? timeSettings[datasets.length] : undefined,
             key = "updateDatasetHelper" + thingId + JSON.stringify(selects) + JSON.stringify(timeSet);
 
@@ -331,7 +336,7 @@ export class SensorChartCache {
 
         (simpleCacheCallOpt || this.simpleCacheCall).bind(this)(key, callback => {
             // apiCall
-            (sensorChartApiOpt || this.api).updateDataset(thingId, selects, timeSet, dataset => {
+            (sensorChartApiOpt || this.api).updateDataset(thingId, selects, options, timeSet, dataset => {
                 // onupdate of api.updateDataset
                 if (typeof callback === "function") {
                     return callback(dataset);
@@ -341,14 +346,15 @@ export class SensorChartCache {
         }, dataset => {
             // onupdate
             datasets.push(dataset);
-            this.updateDatasetHelper(thingId, selects, timeSettings, datasets, onsuccess, observer, onerror, simpleCacheCallOpt, sensorChartApiOpt);
+            this.updateDatasetHelper(thingId, selects, options, timeSettings, datasets, onsuccess, observer, onerror, simpleCacheCallOpt, sensorChartApiOpt);
         }, observer);
     }
 
     /**
      * gets the data for a diagram or table for the given interval
      * @param {Integer} thingId the ID of the thing
-     * @param {String} selects the transportation as 'Anzahl_Fahrraeder' or 'Anzahl_Kfz'
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String[]} timeSettings array of time configurations
      * @param {String} timeSettings.interval the interval to call as '15-Min', '1-Stunde' or '1-Woche'
      * @param {String} timeSettings.from the day to start from (inclusive) as String in format YYYY-MM-DD
@@ -360,12 +366,12 @@ export class SensorChartCache {
      * @param {Function} [updateDatasetHelperOpt] the helper function to use for testing
      * @returns {Void}  -
      */
-    updateDataset (thingId, selects, timeSettings, onupdate, onerror, onstart, oncomplete, updateDatasetHelperOpt) {
+    updateDataset (thingId, selects, options, timeSettings, onupdate, onerror, onstart, oncomplete, updateDatasetHelperOpt) {
         if (typeof onstart === "function") {
             onstart();
         }
 
-        (updateDatasetHelperOpt || this.updateDatasetHelper).bind(this)(thingId, selects, timeSettings, [], datasets => {
+        (updateDatasetHelperOpt || this.updateDatasetHelper).bind(this)(thingId, selects, options, timeSettings, [], datasets => {
             // onsuccess
             if (typeof onupdate === "function") {
                 onupdate(datasets);
@@ -375,7 +381,7 @@ export class SensorChartCache {
             }
         }, () => {
             // observer (triggert by subscription)
-            (updateDatasetHelperOpt || this.updateDatasetHelper).bind(this)(thingId, selects, timeSettings, [], datasets => {
+            (updateDatasetHelperOpt || this.updateDatasetHelper).bind(this)(thingId, selects, options, timeSettings, [], datasets => {
                 // onsuccess
                 if (typeof onupdate === "function") {
                     onupdate(datasets);
@@ -434,15 +440,16 @@ export class SensorChartCache {
      * @param {String} timeSettings.interval the interval to call as '15-Min', '1-Stunde' or '1-Woche'
      * @param {String} timeSettings.from the day to start from (inclusive) as String in format YYYY-MM-DD
      * @param {String} timeSettings.until the day to end with (inclusive) as String in format YYYY-MM-DD
+     * @param {Object} options contains the default label
      * @param {Function} onsuccess as event function(result) with result{title, dataset} and dataset{meansOfTransport: {date: value}}; fired once on success (no subscription)
      * @param {Function} [onerror] as function(error) to fire on error
      * @param {Function} [onstart] as function() to fire before any async action has started
      * @param {Function} [oncomplete] as function() to fire after every async action no matter what
      * @returns {Void}  -
      */
-    downloadData (thingId, meansOfTransport, timeSettings, onsuccess, onerror, onstart, oncomplete) {
+    downloadData (thingId, meansOfTransport, timeSettings, options, onsuccess, onerror, onstart, oncomplete) {
         // this is just a gateway - no cache needed
-        this.api.downloadData(thingId, meansOfTransport, timeSettings, onsuccess, onerror, onstart, oncomplete);
+        this.api.downloadData(thingId, meansOfTransport, timeSettings, options, onsuccess, onerror, onstart, oncomplete);
     }
 
     /**

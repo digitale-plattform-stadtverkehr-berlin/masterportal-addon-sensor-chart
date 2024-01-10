@@ -1,7 +1,7 @@
 <script>
 import SensorChartCompDiagram from "./SensorChartCompDiagram.vue";
 import SensorChartCompTable from "./SensorChartCompTable.vue";
-import SensorChartCheckbox from "./SensorChartCheckbox.vue";
+// import SensorChartCheckbox from "./SensorChartCheckbox.vue";
 import SensorChartDownloads from "./SensorChartDownloads.vue";
 import thousandsSeparator from "../../../../src/utils/thousandsSeparator.js";
 import moment from "moment";
@@ -18,7 +18,7 @@ export default {
         SensorChartCompDiagram,
         SensorChartCompTable,
         SensorChartDownloads,
-        SensorChartCheckbox,
+        // SensorChartCheckbox,
         DatePicker
     },
     props: {
@@ -63,6 +63,11 @@ export default {
         return {
             apiData: [],
             dates: [],
+            additionalDate: [],
+            additionalDates: [],
+            colors: ["#0000bf", "#bf0000", "#00bf00", "#bfbf00", "#00bfbf", "#bf00bf"],
+            interpolatedColors: ["#00007f", "#7f0000", "#007f00", "#7f7f00", "#007f7f", "#7f007f"],
+            open: false,
 
             // props for diagram
             setTooltipValue: (tooltipItem) => {
@@ -112,7 +117,7 @@ export default {
     },
     watch: {
         dates () {
-            if (typeof this.intervals === "object" && this.intervals !== null && typeof this.intervals.field === "string") {
+            if (this.selects && typeof this.intervals === "object" && this.intervals !== null && typeof this.intervals.field === "string") {
                 this.dates[1] = this.timespanConstraints(this.dates);
                 this.setXAxis();
                 this.reloadData();
@@ -120,7 +125,7 @@ export default {
         },
         selects: { // selects a the top
             handler (newVal, oldVal) {
-                if (oldVal) {
+                if (oldVal && this.selects[this.intervals.field]) {
                     this.dates[1] = this.timespanConstraints(this.dates);
                     this.setXAxis();
                     this.reloadData();
@@ -139,18 +144,20 @@ export default {
         // hack for setting cur month in 2nd calendar instead of next month when next date is in cur month
         const updateCalendars = DatePicker.CalendarRange.methods.updateCalendars;
 
+
+        /**
+        this.calendars = this.calendars.map((v, idx) => {
+            const next = new Date(v);
+
+            if (idx === 1) {
+                next.setMonth(moment().add(1, "days").toDate());
+            }
+            return next;
+        });
+         **/
+
         DatePicker.CalendarRange.methods.updateCalendars = function (...args) {
             updateCalendars.apply(this, args);
-            if (args.length === 1) {
-                this.calendars = this.calendars.map((v, idx) => {
-                    const next = new Date(v);
-
-                    if (idx === 1) {
-                        next.setMonth(moment(next.getMonth()).add(1, "days").toDate());
-                    }
-                    return next;
-                });
-            }
         };
     },
     methods: {
@@ -170,6 +177,12 @@ export default {
             else {
                 this.measureName = "??";
             }
+        },
+
+        calcAdditionalEndDate: function (startDate) {
+            const timespan = moment.duration(moment(this.dates[1]).diff(moment(this.dates[0])));
+
+            return moment(startDate).add(timespan.asSeconds(), "seconds");
         },
 
         setXAxis: function () {
@@ -259,14 +272,21 @@ export default {
                 timeSettings = [],
                 intervalField = this.intervals.field,
                 intervalKey = this.selects[intervalField].value,
-                intervalEntry = this.intervals.values[intervalKey];
+                intervalEntry = this.intervals.values[intervalKey],
+                diff = moment(this.dates[1]).clone().endOf(intervalEntry.startOf).diff(moment(this.dates[0]).clone().startOf(intervalEntry.startOf));
 
             timeSettings.push({
                 from: moment(this.dates[0]).clone().startOf(intervalEntry.startOf),
                 until: moment(this.dates[1]).clone().endOf(intervalEntry.startOf)
             });
+            this.additionalDates.forEach(date => {
+                timeSettings.push({
+                    from: moment(date).clone().startOf(intervalEntry.startOf),
+                    until: moment(date).clone().startOf(intervalEntry.startOf).add(diff)
+                });
+            });
 
-            api.updateDataset(thingId, this.selects, timeSettings, datasets => {
+            api.updateDataset(thingId, this.selects, {defaultLabel: this.label, addDateToLabel: true}, timeSettings, datasets => {
                 this.doInterpolate = false;
                 if (Array.isArray(datasets)) {
                     datasets.forEach((transportData, idx) => {
@@ -310,6 +330,45 @@ export default {
                 return true;
             }
             return date < moment(this.archiveStartDate);
+        },
+
+        /**
+         * set the selected option.
+         * @returns {Void} -
+         */
+        openAdditionalCalendar: function () {
+            this.open = true;
+        },
+
+        /**
+         * set the selected option.
+         * @param {DateTime} date the target of current click event
+         * @returns {Void} -
+         */
+        formatDate: function (date) {
+            return moment(date).format("DD.MM.YYYY");
+        },
+
+        /**
+         * set the selected option.
+         * @param {Object[]} evt the target of current click event
+         * @returns {Void} -
+         */
+        addDate: function (evt) {
+            this.additionalDates.push(evt);
+            this.additionalDate = [];
+            this.reloadData();
+        },
+
+        /**
+         * set the selected option.
+         * @param {number} idx the target of current click event
+         * @returns {Void} -
+         */
+        removeDate: function (idx) {
+            this.additionalDates.splice(idx, 1);
+            this.additionalDate = [];
+            this.reloadData();
         }
     }
 };
@@ -325,6 +384,7 @@ export default {
                 <DatePicker
                     v-model="dates"
                     type="date"
+                    class="tight-picker"
                     range
                     :disabled-date="isDateDisabled"
                     range-separator=" bis "
@@ -333,13 +393,58 @@ export default {
                 />
             </section>
         </div>
-        <SensorChartCheckbox
+        <div
+            :id="'additionalDatePicker'"
+            class="hiddenDateSelector"
+        >
+            <div v-if="additionalDates && additionalDates.length > 0">
+                <span
+                    v-for="(date, index) in additionalDates"
+                    :key="index"
+                    class="date-pill"
+                    :title="'Zum entfernen klicken'"
+                    @click="removeDate(index)"
+                    @keydown="removeDate(index)"
+                >
+                    {{ formatDate(date) }}&nbsp;-&nbsp;{{ formatDate(calcAdditionalEndDate(date)) }}&nbsp;&nbsp;
+                    <i class="bi bi-x-lg" />
+                </span>
+            </div>
+            <div
+                v-else
+                class="pill-placeholder"
+            >
+                (keine Vergleichszeiträume angegeben)
+            </div>
+            <section>
+                <DatePicker
+                    v-model="additionalDate"
+                    type="date"
+                    :disabled-date="isDateDisabled"
+                    :editable="false"
+                    :clearable="false"
+                    :open.sync="open"
+                    @change="addDate"
+                />
+            </section>
+            <button
+                class="btn btn-primary btn-small"
+                @click="openAdditionalCalendar"
+                @keydown="openAdditionalCalendar"
+            >
+                Start-Datum für Vergleichszeiträume hinzufügen
+            </button>
+        </div>
+        <h5>Darstellung als Diagramm</h5>
+        <!-- <SensorChartCheckbox
             :table-diagram-id="diagramDayId"
-        />
+        /> -->
         <div :id="diagramDayId">
             <SensorChartCompDiagram
                 v-if="measureName"
                 :api-data="apiData"
+                :colors="colors"
+                :interpolated-colors="colors"
                 :set-tooltip-value="setTooltipValue"
                 :x-axis-ticks="xAxisTicks"
                 :y-axis-ticks="yAxisTicks"
@@ -350,9 +455,10 @@ export default {
                 :do-interpolate="doInterpolate"
             />
         </div>
-        <SensorChartCheckbox
+        <h5>Darstellung als Tabelle</h5>
+        <!-- <SensorChartCheckbox
             :table-diagram-id="tableDayId"
-        />
+        /> -->
         <div :id="tableDayId">
             <SensorChartCompTable
                 v-if="measureName"
@@ -379,8 +485,10 @@ export default {
     </div>
 </template>
 
-<style scoped>
-
+<style lang="scss" scoped>
+h5 {
+  margin-top: 16px;
+}
 .mx-datepicker-range {
     width:100%;
     margin: 8px 0;
@@ -391,5 +499,49 @@ export default {
   justify-content: flex-start;
   margin: 0;
   flex-wrap: wrap;
+}
+.hiddenDateSelector {
+}
+.hiddenDateSelector > section {
+    width: 0px;
+    height: 0px;
+    overflow: hidden;
+}
+.hiddenDateSelector > span {
+    cursor: pointer;
+}
+.btn-small {
+  font-size: 12px;
+  margin: 8px 0;
+  padding: 4px 8px;
+}
+.tight-picker {
+  margin-bottom: 2px;
+}
+.pill-placeholder {
+  margin: 5px 0 5px 0;
+}
+.date-pill {
+  background-color: white;
+  border: 1px solid black;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 2px 4px 2px 6px;
+  color: #000000;
+  margin: 6px 6px 0 0;
+  display: inline-block;
+}
+</style>
+
+<style lang="css">
+.mx-datepicker-main, .mx-btn {
+  color: #000000;
+}
+.mx-calendar-content .cell.disabled,
+.mx-table-date .cell.not-current-month {
+  color: #aaaaaa;
+}
+.mx-calendar-content .cell.active {
+  background-color: #337ab7;
 }
 </style>

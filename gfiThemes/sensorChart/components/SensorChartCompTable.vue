@@ -114,17 +114,12 @@ export default {
 </script>
 
 <template>
-    <div style="width:100%; position:relative; height: 120px;">
-        <div
-            class="table-responsive"
-            style="width:100%; position:absolute;"
-        >
+    <div class="table-wrapper">
+        <div class="table-responsive">
             <table class="table table-striped table-condensed table-bordered text-nowrap">
                 <thead>
                     <tr>
-                        <th class="th-first-col">
-                            {{ setTableTitle() }}
-                        </th>
+                        <th class="th-first-col" />
                         <th
                             v-for="(value, datetime) in getFirstDataset(apiData)"
                             :key="datetime"
@@ -168,8 +163,15 @@ export default {
             }
         }
     }
+    .table-wrapper{
+        width:100%;
+        position:relative;
+        max-height: 200px;
+        overflow: scroll
+    }
     .table-responsive {
         margin-bottom: 0px;
+        width:100%;
     }
     .th-first-col {
         text-align: center;

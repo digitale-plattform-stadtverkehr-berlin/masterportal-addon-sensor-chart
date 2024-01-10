@@ -65,7 +65,7 @@ export default {
             weekInterval: "1-Tag",
             yearInterval: "1-Woche",
             exportModel: new ExportButtonModel({
-                tag: "Download",
+                tag: "Download CSV",
                 rawData: [],
                 fileExtension: "csv"
             })
@@ -152,19 +152,10 @@ export default {
          * @returns {Void}  -
          */
         updateDownloads: function (oncomplete) {
-
-            let result = [],
-                key = null;
-
-
-            this.apiData.forEach(dataObj => {
-                for (key in dataObj) {
-                    result = this.prepareDataForDownload(dataObj[key]);
-                }
-            });
+            const result = this.prepareDataForDownload(this.apiData);
 
             this.exportModel.set("rawData", result);
-            this.exportModel.set("tag", "Download " + this.label + " CSV");
+            // this.exportModel.set("tag", "Download CSV");
             this.exportModel.set("filename", "export");
 
 
@@ -190,7 +181,7 @@ export default {
                     until: moment().format("YYYY-MM-DD")
                 };
 
-            api.downloadData(thingId, meansOfTransport, timeSet, onsuccess, onerror, onstart, oncomplete);
+            api.downloadData(thingId, meansOfTransport, {defaultLabel: this.label}, timeSet, onsuccess, onerror, onstart, oncomplete);
         },
 
         /**
@@ -200,19 +191,39 @@ export default {
          * @returns {Object[]} objArr - converted data
          */
         prepareDataForDownload: function (data) {
-            const objArr = [];
+            const objs = {};
 
-            for (const key in data) {
-                const obj = {},
-                    date = key.split(" ");
+            data.forEach(dataset => {
+                Object.keys(dataset).forEach(label => {
+                    Object.keys(dataset[label]).forEach(key => {
+                        if (objs[key]) {
+                            objs[key][this.removeDateFromLabel(label)] = dataset[label][key];
+                        }
+                        else {
+                            const obj = {},
+                                date = key.split(" ");
 
-                obj.Datum = date[0];
-                obj.Uhrzeit = date[1].slice(0, -3);
-                // obj.Anzahl = data[key];
-                obj.Wert = data[key];
-                objArr.push(obj);
+                            obj.Datum = date[0];
+                            obj.Uhrzeit = date[1].slice(0, -3);
+                            // obj.Anzahl = data[key];
+                            obj[this.removeDateFromLabel(label)] = dataset[label][key] !== null ? dataset[label][key] : "";
+                            objs[key] = obj;
+                        }
+                    });
+                });
+            });
+
+            return Object.entries(objs).sort((a, b) => a[0].localeCompare(b[0])).map(entry => entry[1]);
+        },
+
+        removeDateFromLabel: function (label) {
+            if (label.match(/.* \d{2}\.\d{2}\.\d{4} bis \d{2}\.\d{2}\.\d{4}/)) {
+                return label.substring(0, label.length - 26);
             }
-            return objArr;
+            else if (label.match(/.* \d{2}\.\d{2}\.\d{4}/)) {
+                return label.substring(0, label.length - 11);
+            }
+            return label;
         },
 
         /**

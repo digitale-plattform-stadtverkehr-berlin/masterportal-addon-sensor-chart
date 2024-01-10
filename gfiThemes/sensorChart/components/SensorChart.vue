@@ -6,13 +6,15 @@ import {SensorChartApi} from "../library/sensorChartApi";
 import SensorChartInfo from "./SensorChartInfo.vue";
 import SensorChartChart from "./SensorChartChart.vue";
 import SensorChartFooter from "./SensorChartFooter.vue";
+import Multiselect from "vue-multiselect";
 
 export default {
     name: "SensorChart",
     components: {
         SensorChartInfo,
         SensorChartChart,
-        SensorChartFooter
+        SensorChartFooter,
+        Multiselect
     },
     props: {
         feature: {
@@ -23,6 +25,7 @@ export default {
     data () {
         return {
             api: null,
+            customStyle: {},
             propThingId: 0,
             meansOfTransports: [],
             meansOfTransportsCount: [],
@@ -46,7 +49,8 @@ export default {
             keyDay: "day",
             keyWeek: "week",
             keyYear: "year",
-            chart_reload: 0
+            chart_reload: 0,
+            defaultLabel: ""
         };
     },
     computed: {
@@ -81,6 +85,9 @@ export default {
 
         descriptionLabel: function () {
             return this.$t("additional:modules.tools.gfi.themes.sensorChart.descriptionLabel");
+        },
+        indication: function () {
+            return this.$t("additional:modules.tools.gfi.themes.sensorChart.notice");
         }
     },
     watch: {
@@ -88,11 +95,7 @@ export default {
         feature: {
             handler (newVal, oldVal) {
                 if (oldVal) {
-                    this.createDataConnection(newVal.getProperties(), null).then(() => {
-                        this.setHeader(this.api, this.propThingId, this.meansOfTransportsCount[0], this.headerProperties);
-                        this.setComponentKey(this.propThingId);
-                        this.setActiveDefaultTab();
-                    });
+                    this.init();
                 }
             },
             immediate: true
@@ -109,73 +112,7 @@ export default {
         }
     },
     created: function () {
-        const gfiTheme = this.feature?.getTheme(),
-            gfiParams = gfiTheme?.params;
-
-        this.meansOfTransports = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "meansOfTransports") ? gfiParams.meansOfTransports : [];
-        this.createDataConnection(this.feature.getProperties(), null).then(() => {
-            this.meansOfTransportsCount = this.meansOfTransports.filter(function isCount (mot) {
-                return mot.type === "counting";
-            });
-            this.meansOfTransportsSpeed = this.meansOfTransports.filter(function isSpeed (mot) {
-                return mot.type === "speed";
-            });
-
-            const headerPropertyNames = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "headerProperties") ? gfiParams.headerProperties : [];
-
-            this.infoSelects = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "infoSelects") ? gfiParams.infoSelects : {};
-
-            Object.entries(headerPropertyNames).forEach(hp => {
-                const hpKey = hp[0],
-                    hpDef = hp[1],
-                    headerProperty = {
-                        name: hpKey,
-                        label: "",
-                        value: ""
-                    };
-                let hpLabel,
-                    hpDefault,
-                    isSelect = false;
-
-                if (typeof hpDef === "string") {
-                    hpLabel = hpDef;
-                }
-                else {
-                    hpLabel = hpDef.name;
-                    hpDefault = hpDef.default;
-                    if (hpDef.isSelect) {
-                        isSelect = true;
-                    }
-                }
-                headerProperty.label = hpLabel;
-
-                if (isSelect) {
-                    headerProperty.isSelect = true;
-                    if (hpDefault) {
-                        headerProperty.default = hpDefault;
-                    }
-                }
-
-                this.headerProperties.push(headerProperty);
-            });
-
-            // get special property "photos" from properties
-            if (typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "headerPhotos") && gfiParams.headerPhotos) {
-                this.hasPhotos = true;
-            }
-
-            this.archiveStartDate = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "archiveStartDate") ? gfiParams.archiveStartDate : this.archiveStartDate;
-
-            this.dayStartOffset = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "dayStartOffset") ? gfiParams.dayStartOffset : this.dayStartOffset;
-
-            this.weekStartOffset = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "weekStartOffset") ? gfiParams.weekStartOffset : this.weekStartOffset;
-
-            this.intervals = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "intervals") ? gfiParams.intervals : this.intervals;
-
-            this.setHeader(this.api, this.propThingId, this.meansOfTransportsCount[0], this.headerProperties);
-            this.setComponentKey(this.propThingId);
-            this.setActiveDefaultTab();
-        });
+        this.init();
     },
     mounted: function () {
         this.setHeader(this.api, this.propThingId, this.meansOfTransportsCount[0], this.headerProperties);
@@ -185,6 +122,94 @@ export default {
         this.api.unsubscribeEverything();
     },
     methods: {
+        init: function () {
+            const gfiTheme = this.feature?.getTheme(),
+                gfiParams = gfiTheme?.params;
+
+            this.meansOfTransports = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "meansOfTransports") ? gfiParams.meansOfTransports : [];
+            this.createDataConnection(this.feature.getProperties(), null).then(() => {
+                this.meansOfTransportsCount = this.meansOfTransports.filter(function isCount (mot) {
+                    return mot.type === "counting";
+                });
+                this.meansOfTransportsSpeed = this.meansOfTransports.filter(function isSpeed (mot) {
+                    return mot.type === "speed";
+                });
+
+                const headerPropertyNames = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "headerProperties") ? gfiParams.headerProperties : [];
+
+                this.defaultLabel = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "defaultLabel") ? gfiParams.defaultLabel : "";
+
+                this.infoSelects = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "infoSelects") ? gfiParams.infoSelects : {};
+
+                this.headerProperties = [];
+                Object.entries(headerPropertyNames).forEach(hp => {
+                    const hpKey = hp[0],
+                        hpDef = hp[1],
+                        headerProperty = {
+                            name: hpKey,
+                            label: "",
+                            value: ""
+                        };
+                    let hpLabel,
+                        hpDefault,
+                        hpInfo,
+                        isSelect = false,
+                        isMultiple = false;
+
+                    if (typeof hpDef === "string") {
+                        hpLabel = hpDef;
+                    }
+                    else {
+                        hpLabel = hpDef.name;
+                        hpDefault = hpDef.default;
+                        hpInfo = hpDef.infoText;
+                        if (hpDef.isSelect) {
+                            isSelect = true;
+                        }
+                        if (hpDef.isMultiple) {
+                            isMultiple = true;
+                        }
+                    }
+                    headerProperty.label = hpLabel;
+
+                    if (isSelect) {
+                        headerProperty.isSelect = true;
+                        headerProperty.isMultiple = isMultiple;
+                        if (hpDefault) {
+                            headerProperty.default = hpDefault;
+                        }
+                    }
+
+                    if (Object.prototype.hasOwnProperty.call(gfiParams, "defaultLabelField") && (gfiParams.defaultLabelField === hpKey)) {
+                        headerProperty.isDefaultLabel = true;
+                    }
+
+                    if (hpInfo) {
+                        headerProperty.infoText = hpInfo;
+                    }
+
+                    this.headerProperties.push(headerProperty);
+                });
+
+                // get special property "photos" from properties
+                if (typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "headerPhotos") && gfiParams.headerPhotos) {
+                    this.hasPhotos = true;
+                }
+
+                this.archiveStartDate = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "archiveStartDate") ? gfiParams.archiveStartDate : this.archiveStartDate;
+
+                this.dayStartOffset = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "dayStartOffset") ? gfiParams.dayStartOffset : this.dayStartOffset;
+
+                this.weekStartOffset = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "weekStartOffset") ? gfiParams.weekStartOffset : this.weekStartOffset;
+
+                this.intervals = typeof gfiParams === "object" && Object.prototype.hasOwnProperty.call(gfiParams, "intervals") ? gfiParams.intervals : this.intervals;
+
+                this.setHeader(this.api, this.propThingId, this.meansOfTransportsCount[0], this.headerProperties);
+                this.setComponentKey(this.propThingId);
+                this.setActiveDefaultTab();
+            });
+        },
+
         /**
          * it will make conntection to thing api
          * @param {Object[]} feature the feature properties from thing
@@ -285,13 +310,12 @@ export default {
 
         /**
          * set the selected option.
-         * @param {Object[]} evt the target of current click event
+         * @param {Object[]} field the name of the values to change
+         * @param {Object[]} values the new values
          * @returns {Void} -
          */
-        setSelectedValue: function (evt) {
-            const field = evt.srcElement.parentElement.name,
-                value = evt.srcElement.parentElement.value,
-                newSelects = {};
+        setSelectedValue: function (field, values) {
+            const newSelects = {};
 
             newSelects[field] = {};
 
@@ -299,7 +323,7 @@ export default {
                 newSelects[key] = this.selectedValues[key];
             });
 
-            newSelects[field].value = value;
+            newSelects[field].value = values;
             this.selectedValues = newSelects;
         },
 
@@ -328,6 +352,7 @@ export default {
                 console.warn("The description received is incomplete:", errormsg);
             });
 
+            this.selectedValues = {};
             headerProperties.forEach(headerProperty => {
                 if (!headerProperty.isSelect) {
                     api.updateProperty(thingId, headerProperty.name, hpValue => {
@@ -344,6 +369,9 @@ export default {
                         "label": headerProperty.name,
                         "description": headerProperty.label
                     };
+                    if (headerProperty.isDefaultLabel) {
+                        this.selectedValues[headerProperty.name].isDefaultLabel = true;
+                    }
                 }
             });
 
@@ -444,27 +472,37 @@ export default {
                 <b>{{ descriptionLabel }}:</b><br>{{ description }}<br><br>
                 <table>
                     <tr
-                        v-for="headerProperty in headerProperties"
+                        v-for="(headerProperty, index) in headerProperties"
                         :key="'headerProperty.'+headerProperty.name"
                     >
-                        <td><b>{{ headerProperty.label }}:</b></td>
+                        <td class="label">
+                            <b>{{ headerProperty.label }}:</b>
+                            <span
+                                v-if="headerProperty.infoText"
+                                class="infotip"
+                            >
+                                <i class="bi bi-info-square-fill icon-big" />
+                                <span class="infotip-text">{{ headerProperty.infoText }}</span>
+                            </span>
+                        </td>
                         <template v-if="headerProperty.isSelect">
-                            <td>
+                            <td class="box">
                                 <label>
-                                    <select
-                                        :id="headerProperty.label"
-                                        :name="headerProperty.name"
-                                    >
-                                        <option
-                                            v-for="selectOption in headerProperty.value"
-                                            :key="'select_'+headerProperty.name+'_'+selectOption"
-                                            :value="selectOption"
-                                            :label="selectOption"
-                                            :selected="headerProperty.default === selectOption"
-                                            @click="setSelectedValue"
-                                            @keydown.enter="setSelectedValue"
-                                        />
-                                    </select>
+                                    <Multiselect
+                                        v-model="headerProperty.default"
+                                        :options="headerProperty.value"
+                                        :multiple="headerProperty.isMultiple"
+                                        :preselect-first="false"
+                                        :searchable="false"
+                                        select-label=""
+                                        deselect-label=""
+                                        selected-label=""
+                                        placeholder=""
+                                        :allow-empty="false"
+
+                                        :value="headerProperty.default"
+                                        @input="setSelectedValue(headerProperty.name, $event)"
+                                    />
                                 </label>
                             </td>
                         </template>
@@ -473,6 +511,12 @@ export default {
                         </template>
                     </tr>
                 </table>
+                <div
+                    class="indication"
+                    :style="customStyle"
+                >
+                    {{ indication }}
+                </div>
             </div>
             <div
                 v-if="hasPhotos"
@@ -520,10 +564,7 @@ export default {
                     :class="(currentTabId === 'infos') ? 'd-block' : 'd-none'"
                 >
                     <SensorChartInfo
-                        v-for="(mot, index) in meansOfTransports.filter(mot => mot['showOnInfoTab'] !== false)"
-                        :key="index"
-                        :label="mot['label']"
-                        :mot-type="mot['type']"
+                        :label="defaultLabel"
                         :api="api"
                         :thing-id="propThingId"
                         :selects="selectedValues"
@@ -536,7 +577,7 @@ export default {
                 >
                     <SensorChartChart
                         :key="chart_reload"
-                        :label="meansOfTransports[0]['label']"
+                        :label="defaultLabel"
                         :mot-id="meansOfTransports[0]['id']"
                         :mot-type="meansOfTransports[0]['type']"
                         :selects="selectedValues"
@@ -560,6 +601,58 @@ export default {
     </div>
 </template>
 
+<style lang="css">
+.multiselect {
+  border:1px solid black;
+  min-height: auto;
+  /* height: 28px; */
+}
+.multiselect__tags {
+  min-height: auto;
+  padding-top: 4px;
+  font-size: 0;
+}
+.multiselect__single {
+  min-height: auto;
+  font-size: 0.75rem;
+  margin-bottom: 0px;
+  padding-top: 0;
+  padding-bottom: 4px;
+}
+.multiselect__select::before {
+  top: 50%;
+}
+.multiselect--active .multiselect__select {
+  transform: none;
+}
+.multiselect__content {
+  border:1px solid black;
+}
+.multiselect__option {
+  font-size: 0.75rem;
+  color: black;
+  min-height: auto;
+  padding: 4px;
+}
+.multiselect__option--highlight,
+.multiselect__option--selected,
+.multiselect__option--selected.multiselect__option--highlight {
+  background-color:#337ab7;
+  color: white;
+}
+.multiselect__tag {
+  background-color:#337ab7;
+  border-radius: none;
+  font-size: 0.75rem;
+}
+.multiselect__tag-icon:hover {
+  background-color:#337ab7;
+}
+.multiselect__tag-icon::after {
+  color: white;
+}
+</style>
+
 <style lang="scss" scoped>
 .sensorChart-gfi {
     padding: 10px 15px 0 15px;
@@ -579,6 +672,7 @@ export default {
         display: flex;
         justify-content: space-between;
         .properties {
+          // width: 100%;
           box-sizing: border-box;
           margin-right: 16px;
           table tr td:last-child {
@@ -626,5 +720,54 @@ export default {
         width: 100%;
         margin-bottom: 20px
     }
+    .indication {
+        font-size: 12px;
+        margin-top: 5px;
+        left: 0px;
+    }
+
+    .properties {
+      width: 100%;
+      margin-right: 0;
+    }
+    table {
+      width: 100%;
+      td.box {
+        width: 100%;
+        padding-left: 16px;
+      }
+      td.label {
+        white-space: nowrap;
+      }
+      label {
+          height: 50px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+      }
+    }
 }
+.icon-big {
+  font-size: 16px;
+}
+.infotip {
+    position: relative;
+    .infotip-text {
+        visibility: hidden;
+        // width: 100%;
+        white-space: nowrap;
+        background-color: black;
+        color: #fff;
+        padding: 2px 8px;
+
+        position: absolute;
+        z-index: 1;
+        top: -5px;
+        left: 105%;
+    }
+}
+.infotip:hover .infotip-text {
+  visibility: visible;
+}
+
 </style>

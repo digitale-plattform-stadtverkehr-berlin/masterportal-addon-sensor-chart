@@ -14,10 +14,6 @@ export default {
             type: Object,
             required: true
         },
-        motType: {
-            type: String,
-            required: true
-        },
         motDayInterval: {
             type: String,
             required: false,
@@ -58,7 +54,9 @@ export default {
             highestWorkloadWeekValue: "",
             highestWorkloadMonthDesc: "",
             highestWorkloadMonthValue: "",
-            dayInterval: this.motDayInterval
+            dayInterval: this.motDayInterval,
+            motType: "",
+            isSingleValueMode: false
         };
     },
     computed: {
@@ -131,7 +129,9 @@ export default {
         },
         selects: {
             handler (newVal) {
-                this.setupTabInfo(this.api, this.thingId, newVal, this.dayInterval);
+                if (this.infoSelects.day) {
+                    this.setupTabInfo(this.api, this.thingId, newVal, this.dayInterval);
+                }
             }
         }
     },
@@ -156,66 +156,82 @@ export default {
                 monthSelects = {...selects},
                 yearSelects = {...selects};
 
+            this.isSingleValueMode = this.checkSingleValue(selects);
+
             Object.keys(this.infoSelects.day).forEach(select => {
                 daySelects[select] = {...daySelects[select]};
                 daySelects[select].value = this.infoSelects.day[select];
+                daySelects[select].overwritten = true;
             });
 
             Object.keys(this.infoSelects.week).forEach(select => {
                 weekSelects[select] = {...weekSelects[select]};
                 weekSelects[select].value = this.infoSelects.week[select];
+                weekSelects[select].overwritten = true;
             });
 
             Object.keys(this.infoSelects.month).forEach(select => {
                 monthSelects[select] = {...monthSelects[select]};
                 monthSelects[select].value = this.infoSelects.month[select];
+                monthSelects[select].overwritten = true;
             });
 
             Object.keys(this.infoSelects.year).forEach(select => {
                 yearSelects[select] = {...yearSelects[select]};
                 yearSelects[select].value = this.infoSelects.year[select];
+                yearSelects[select].overwritten = true;
             });
 
             // SPEED
-            if (this.motType === "speed") {
+            if (this.isSingleValueMode) {
                 // update day speed medium today
-                api.updateDaySpeedMedium(thingId, selects, selects.replace("Geschwindigkeit", "Anzahl"), dayInterval, moment().format("YYYY-MM-DD"), (date, value) => {
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().format("YYYY-MM-DD"), (date, values) => {
+
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
                     this.setDescToday(moment().format("dd Do MM YYYY"));
-                    this.setTotalMediumToday(thousandsSeparator(value));
+                    this.setTotalMediumToday(values);
                 }, errormsg => {
-                    this.setDescToday("(nicht empfangen)");
-                    this.setTotalMediumToday("(nicht empfangen)");
+                    this.setDescToday({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setTotalMediumToday({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update today is incomplete:", errormsg);
                 });
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().subtract(1, "days").format("YYYY-MM-DD"), (date, values) => {
 
-                // update day speed medium yesterday
-                api.updateDaySpeedMedium(thingId, selects, selects.replace("Geschwindigkeit", "Anzahl"), dayInterval, moment().subtract(1, "days").format("YYYY-MM-DD"), (date, value) => {
-                    this.setDescYesterday(moment().subtract(1, "days").format("dd Do MM YYYY"));
-                    this.setTotalMediumYesterday(thousandsSeparator(value));
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setDescYesterday(moment().format("dd Do MM YYYY"));
+                    this.setTotalMediumYesterday(values);
                 }, errormsg => {
-                    this.setDescYesterday("(nicht empfangen)");
-                    this.setTotalMediumYesterday("(nicht empfangen)");
-                    console.warn("The last update last day is incomplete:", errormsg);
+                    this.setDescYesterday({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setTotalMediumYesterday({"(nicht empfangen)": "(nicht empfangen)"});
+                    console.warn("The last update today is incomplete:", errormsg);
                 });
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().subtract(2, "days").format("YYYY-MM-DD"), (date, values) => {
 
-                // update day speed medium two days ago
-                api.updateDaySpeedMedium(thingId, selects, selects.replace("Geschwindigkeit", "Anzahl"), dayInterval, moment().subtract(2, "day").format("YYYY-MM-DD"), (date, value) => {
-                    this.setDescTwoDaysAgo(moment().subtract(2, "days").format("dd Do MM YYYY"));
-                    this.setTotalMediumTwoDaysAgo(thousandsSeparator(value));
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setDescTwoDaysAgo(moment().format("dd Do MM YYYY"));
+                    this.setTotalMediumTwoDaysAgo(values);
                 }, errormsg => {
-                    this.setDescTwoDaysAgo("(nicht empfangen)");
-                    this.setTotalMediumTwoDaysAgo("(nicht empfangen)");
-                    console.warn("The last update two days ago is incomplete:", errormsg);
+                    this.setDescTwoDaysAgo({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setTotalMediumTwoDaysAgo({"(nicht empfangen)": "(nicht empfangen)"});
+                    console.warn("The last update today is incomplete:", errormsg);
                 });
-
             }
             else {
-                api.updateYear(thingId, yearSelects, moment().format("YYYY"), (year, value) => {
+                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, moment().format("YYYY"), (year, values) => {
                     this.setThisYearDesc(typeof year === "string" ? "01.01." + year : "");
-                    this.setThisYearValue(thousandsSeparator(value));
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setThisYearValue(values);
                 }, errormsg => {
-                    this.setThisYearDesc("(nicht");
-                    this.setThisYearValue("empfangen)");
+                    this.setThisYearDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setThisYearValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update year is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"seit Jahresbeginn\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -223,12 +239,15 @@ export default {
                     });
                 });
 
-                api.updateYear(thingId, yearSelects, moment().subtract(1, "year").format("YYYY"), (year, value) => {
+                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, moment().subtract(1, "year").format("YYYY"), (year, values) => {
                     this.setLastYearDesc(typeof year === "string" ? year : "");
-                    this.setLastYearValue(thousandsSeparator(value));
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setLastYearValue(values);
                 }, errormsg => {
-                    this.setLastYearDesc("(nicht");
-                    this.setLastYearValue("empfangen)");
+                    this.setLastYearDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setLastYearValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update last year is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"im Vorjahr\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -236,12 +255,15 @@ export default {
                     });
                 });
 
-                api.updateDay(thingId, daySelects, dayInterval, moment().subtract(1, "day").format("YYYY-MM-DD"), (date, value) => {
+                api.updateDay(thingId, daySelects, {defaultLabel: this.label}, dayInterval, moment().subtract(1, "day").format("YYYY-MM-DD"), (date, values) => {
                     this.setLastDayDesc(typeof date === "string" ? moment(date, "YYYY-MM-DD").format("DD.MM.YYYY") : "");
-                    this.setLastDayValue(thousandsSeparator(value));
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setLastDayValue(values);
                 }, errormsg => {
-                    this.setLastDayDesc("(nicht");
-                    this.setLastDayValue("empfangen)");
+                    this.setLastDayDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setLastDayValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update last day is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"am Vortag\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -249,12 +271,15 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadDay(thingId, daySelects, moment().format("YYYY"), (date, value) => {
-                    this.setHighestWorkloadDayDesc(typeof date === "string" ? moment(date, "YYYY-MM-DD").format("DD.MM.YYYY") : "");
-                    this.setHighestWorkloadDayValue(thousandsSeparator(value));
+                api.updateHighestWorkloadDay(thingId, daySelects, {defaultLabel: this.label}, moment().format("YYYY"), (dates, values) => {
+                    this.setHighestWorkloadDayDesc(dates);
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setHighestWorkloadDayValue(values);
                 }, errormsg => {
-                    this.setHighestWorkloadDayDesc("(nicht");
-                    this.setHighestWorkloadDayValue("empfangen)");
+                    this.setHighestWorkloadDayDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setHighestWorkloadDayValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update HighestWorkloadDay is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"Stärkster Tag im Jahr\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -262,12 +287,15 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadWeek(thingId, weekSelects, moment().format("YYYY"), (calendarWeek, value) => {
-                    this.setHighestWorkloadWeekDesc(!isNaN(calendarWeek) || typeof calendarWeek === "string" ? this.calendarweek + " " + calendarWeek : "");
-                    this.setHighestWorkloadWeekValue(thousandsSeparator(value));
+                api.updateHighestWorkloadWeek(thingId, weekSelects, {defaultLabel: this.label}, moment().format("YYYY"), (weeks, values) => {
+                    this.setHighestWorkloadWeekDesc(weeks);
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setHighestWorkloadWeekValue(values);
                 }, errormsg => {
-                    this.setHighestWorkloadWeekDesc("(nicht");
-                    this.setHighestWorkloadWeekValue("empfangen)");
+                    this.setHighestWorkloadWeekDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setHighestWorkloadWeekValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update HighestWorkloadWeek is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"Stärkste Woche im Jahr\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -275,12 +303,15 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadMonth(thingId, monthSelects, moment().format("YYYY"), (month, value) => {
-                    this.setHighestWorkloadMonthDesc(typeof month === "string" ? month : "");
-                    this.setHighestWorkloadMonthValue(thousandsSeparator(value));
+                api.updateHighestWorkloadMonth(thingId, monthSelects, {defaultLabel: this.label}, moment().format("YYYY"), (months, values) => {
+                    this.setHighestWorkloadMonthDesc(months);
+                    Object.keys(values).forEach(label => {
+                        values[label] = thousandsSeparator(values[label]);
+                    });
+                    this.setHighestWorkloadMonthValue(values);
                 }, errormsg => {
-                    this.setHighestWorkloadMonthDesc("(nicht");
-                    this.setHighestWorkloadMonthValue("empfangen)");
+                    this.setHighestWorkloadMonthDesc({"(nicht empfangen)": "(nicht empfangen)"});
+                    this.setHighestWorkloadMonthValue({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update HighestWorkloadMonth is incomplete:", errormsg);
                     Radio.trigger("Alert", "alert", {
                         content: "Der Wert für \"Stärkster Monat im Jahr\" wurde wegen eines API-Fehlers nicht empfangen.",
@@ -289,6 +320,21 @@ export default {
                 });
 
             }
+        },
+
+        checkSingleValue: function (selects) {
+            let isSingleValue = false;
+
+            if (this.infoSelects.singleValues) {
+                Object.keys(this.infoSelects.singleValues).forEach(key => {
+                    if (Object.prototype.hasOwnProperty.call(selects, key)) {
+                        if (selects[key].value.includes(this.infoSelects.singleValues[key])) {
+                            isSingleValue = true;
+                        }
+                    }
+                });
+            }
+            return isSingleValue;
         },
 
         /**
@@ -484,43 +530,53 @@ export default {
             class="padded"
         >
             <table class="table table-hover table-striped">
-                <tbody v-if="motType === 'speed'">
+                <tbody v-if="isSingleValueMode">
                     <tr>
                         <td class="bold">
-&nbsp;
+                        &nbsp;
                         </td>
-                        <td class="bold">
-                            {{ period }}
-                        </td>
-                        <td class="bold">
-                            {{ medium }}
+                        <td
+                            v-for="(columnLabel, idx) in Object.keys(totalMediumToday)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ columnLabel }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ intersectionToday }}
                         </td>
-                        <td>{{ descToday }}</td>
-                        <td class="bold">
-                            {{ totalMediumToday }}
+                        <td
+                            v-for="(todayColumn, idx) in Object.keys(totalMediumToday)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ totalMediumToday[todayColumn] }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ intersectionYesterday }}
                         </td>
-                        <td>{{ descYesterday }}</td>
-                        <td class="bold">
-                            {{ totalMediumYesterday }}
+                        <td
+                            v-for="(yesterdayColumn, idx) in Object.keys(totalMediumToday)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ totalMediumYesterday[yesterdayColumn] }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ intersectionTwoDaysAgo }}
                         </td>
-                        <td>{{ descTwoDaysAgo }}</td>
-                        <td class="bold">
-                            {{ totalMediumTwoDaysAgo }}
+                        <td
+                            v-for="(twoDaysAgo, idx) in Object.keys(totalMediumToday)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ totalMediumTwoDaysAgo[twoDaysAgo] }}
                         </td>
                     </tr>
                 </tbody>
@@ -529,11 +585,12 @@ export default {
                         <td class="bold">
 &nbsp;
                         </td>
-                        <td class="bold">
-                            {{ period }}
-                        </td>
-                        <td class="bold">
-                            {{ number }}
+                        <td
+                            v-for="(columnLabel, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ columnLabel }}
                         </td>
                     </tr><!--
                     <tr>
@@ -545,54 +602,72 @@ export default {
                         <td class="bold">
                             {{ sinceBeginningOfTheYear }}
                         </td>
-                        <td>{{ thisYearDesc }}</td>
-                        <td class="bold">
-                            {{ thisYearValue }}
+                        <td
+                            v-for="(thisYearColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ thisYearValue[thisYearColumn] }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ overThePastYear }}
                         </td>
-                        <td>{{ lastYearDesc }}</td>
-                        <td class="bold">
-                            {{ lastYearValue }}
+                        <td
+                            v-for="(lastYearColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ lastYearValue[lastYearColumn] }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ onThePreviousDay }}
                         </td>
-                        <td>{{ lastDayDesc }}</td>
-                        <td class="bold">
-                            {{ lastDayValue }}
+                        <td
+                            v-for="(lastDayColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                            class="bold"
+                        >
+                            {{ lastDayValue[lastDayColumn] }}
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ highestDay }}
                         </td>
-                        <td>{{ highestWorkloadDayDesc }}</td>
-                        <td class="bold">
-                            {{ highestWorkloadDayValue }}
+                        <td
+                            v-for="(highestWorkloadDayColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                        >
+                            <span class="bold">{{ highestWorkloadDayValue[highestWorkloadDayColumn] }}</span>
+                            ({{ highestWorkloadDayDesc[highestWorkloadDayColumn] }})
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ highestWeek }}
                         </td>
-                        <td>{{ highestWorkloadWeekDesc }}</td>
-                        <td class="bold">
-                            {{ highestWorkloadWeekValue }}
+                        <td
+                            v-for="(highestWorkloadWeekColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                        >
+                            <span class="bold">{{ highestWorkloadWeekValue[highestWorkloadWeekColumn] }}</span>
+                            ({{ highestWorkloadWeekDesc[highestWorkloadWeekColumn] }})
                         </td>
                     </tr>
                     <tr>
                         <td class="bold">
                             {{ highestMonth }}
                         </td>
-                        <td>{{ highestWorkloadMonthDesc }}</td>
-                        <td class="bold">
-                            {{ highestWorkloadMonthValue }}
+                        <td
+                            v-for="(highestWorkloadMonthColumn, idx) in Object.keys(thisYearValue)"
+                            :key="idx"
+                        >
+                            <span class="bold">{{ highestWorkloadMonthValue[highestWorkloadMonthColumn] }}</span>
+                            ({{ highestWorkloadMonthDesc[highestWorkloadMonthColumn] }})
                         </td>
                     </tr>
                 </tbody>
@@ -603,6 +678,7 @@ export default {
 
 <style lang="scss" scoped>
     #sensorchart-info-table {
+        overflow: scroll;
         h1 {margin-top:20px;}
         table {
             margin: 0;

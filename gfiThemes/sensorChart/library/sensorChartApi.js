@@ -138,6 +138,81 @@ export class SensorChartApi {
     }
 
     /**
+     * Group the first oberservations of
+     * @param {Object} dataset contains the data from the STA-Server
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
+     * @returns {{}|boolean} the bucketed Values or false for empty dataset
+     */
+    bucketSingleValues (dataset, selects, options) {
+        if (!this.checkForObservations(dataset)) {
+            return false;
+        }
+
+        const results = {},
+            dates = {};
+
+        dataset[0].Datastreams.forEach(datastream => {
+            let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
+
+            if (!labelString) {
+                labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
+            }
+
+            if (!labelString && options.defaultLabel) {
+                labelString = options.defaultLabel;
+            }
+
+            results[labelString] = datastream.Observations[0].result + " " + datastream.unitOfMeasurement.symbol;
+            dates[labelString] = "";
+        });
+
+        return results;
+    }
+
+    /**
+     * sums up the observation results of the given structure, used for counting streams
+     * @param {Object} dataset the dataset to go through
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
+     * @returns {Integer|Boolean}  the sum of all found observation results
+     */
+    bucketObservations (dataset, selects, options) {
+        if (!this.checkForObservations(dataset)) {
+            return false;
+        }
+
+        const results = {},
+            dates = {};
+
+        dataset[0].Datastreams.forEach(datastream => {
+            let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und "),
+                sum = 0;
+
+            if (!labelString) {
+                labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
+            }
+
+            if (!labelString && options.defaultLabel) {
+                labelString = options.defaultLabel;
+            }
+
+            datastream.Observations.forEach(observation => {
+                if (!Object.prototype.hasOwnProperty.call(observation, "result")) {
+                    // continue
+                    return;
+                }
+
+                sum += observation.result;
+            });
+            results[labelString] = sum;
+            dates[labelString] = "";
+        });
+
+        return results;
+    }
+
+    /**
      * calculate the medium speed of the observation results of the given structure, weighted by count for the same structure
      * @param {Object} datasetSpeed the speed dataset to go through
      * @param {Object} datasetCount the count dataset to go through
@@ -200,6 +275,51 @@ export class SensorChartApi {
         });
 
         return firstDate;
+    }
+
+    /**
+     * returns the oldest date as phenomenonTime of the given structure
+     * @param {Object} dataset the dataset to go through
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
+     * @param {String} formatterFunction the format String for the returned dates
+     * @param {String} [firstDateSoFar] the firstDate to account for the "firstest" so far, todays date if no firstDateSoFar is given
+     * @returns {String[]|Boolean}  the first date by datastream as phenomenonTime (in format YYYY-MM-DDTHH:mm:ss.SSSZ) or false if no observations were found
+     */
+    bucketDates (dataset, selects, options, formatterFunction, firstDateSoFar) {
+        if (!this.checkForObservations(dataset)) {
+            return false;
+        }
+
+        const dates = {};
+
+        dataset[0].Datastreams.forEach(datastream => {
+            let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und "),
+                firstDate = firstDateSoFar || moment().toISOString(),
+                phenomenonTime = "";
+
+            if (!labelString) {
+                labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
+            }
+            if (!labelString && options.defaultLabel) {
+                labelString = options.defaultLabel;
+            }
+
+            datastream.Observations.forEach(observation => {
+                if (!Object.prototype.hasOwnProperty.call(observation, "phenomenonTime")) {
+                    // continue
+                    return;
+                }
+
+                phenomenonTime = this.parsePhenomenonTime(observation.phenomenonTime);
+                if (phenomenonTime < firstDate) {
+                    firstDate = phenomenonTime;
+                }
+            });
+            dates[labelString] = formatterFunction(firstDate);
+        });
+
+        return dates;
     }
 
     /**
@@ -314,7 +434,8 @@ export class SensorChartApi {
     /**
      * gets the sum for a single day excluding todays last 5 minutes
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {Integer} dayInterval measurement interval on day tab
      * @param {String} day the day as String in format YYYY-MM-DD
      * @param {Function} [onupdate] as event function(date, value) fires initialy and anytime server site changes are made
@@ -324,11 +445,11 @@ export class SensorChartApi {
      * @param {String} [dayTodayOpt=NOW] as a String marking todays date in format YYYY-MM-DD; if left false, today is set automatically
      * @returns {Void}  -
      */
-    updateDay (thingId, selects, dayInterval, day, onupdate, onerror, onstart, oncomplete, dayTodayOpt) {
+    updateDay (thingId, selects, options, dayInterval, day, onupdate, onerror, onstart, oncomplete, dayTodayOpt) {
         let sum = 0;
         const startDate = moment(day, "YYYY-MM-DD").toISOString(),
             endDate = moment(day, "YYYY-MM-DD").add(1, "day").toISOString(),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
+            selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))";
 
         return this.http.get(url, (dataset) => {
@@ -337,7 +458,7 @@ export class SensorChartApi {
                 return;
             }
 
-            sum = this.sumObservations(dataset);
+            sum = this.bucketObservations(dataset, selects, options);
 
             if (typeof onupdate === "function") {
                 onupdate(day, sum);
@@ -375,46 +496,37 @@ export class SensorChartApi {
     /**
      * gets the speed medium for a single day
      * @param {Integer} thingId the ID of the thing
-     * @param {String} meansOfTransportSpeed the transportation f.e. 'Geschwindigkeit_Kfz'
-     * @param {String} meansOfTransportCount the transportation for count f.e. 'Anzahl_Kfz'
-     * @param {Integer} dayInterval measurement interval on day tab
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} day the day as String in format YYYY-MM-DD
      * @param {Function} [onupdate] as event function(date, value) fires initialy and anytime server site changes are made
      * @param {Function} [onerror] as function(error) to fire on error
      * @returns {Void}  -
      */
-    updateDaySpeedMedium (thingId, meansOfTransportSpeed, meansOfTransportCount, dayInterval, day, onupdate, onerror) {
-        let sum = 0;
+    updateDaySingle (thingId, selects, options, day, onupdate, onerror) {
         const startDate = moment(day, "YYYY-MM-DD").startOf("day").toISOString(),
-            endDate = moment(day, "YYYY-MM-DD").endOf("day").toISOString(),
-            speedUrl = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=properties/layerName eq '" + meansOfTransportSpeed + this.layerNameInfix + "_" + dayInterval + "';$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))",
-            countUrl = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=properties/layerName eq '" + meansOfTransportCount + this.layerNameInfix + "_" + dayInterval + "';$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))";
+            endDate = moment(day, "YYYY-MM-DD").startOf("day").add(1, "day").toISOString(),
+            selectString = this.getSelectString(selects),
+            url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))";
 
         // get speed
-        return this.http.get(speedUrl, (datasetSpeed) => {
-            if (!this.checkForObservations(datasetSpeed)) {
-                (onerror || this.defaultErrorHandler)("SensorChartAPI.updateDay: the datasetSpeed does not include a datastream with an observation", datasetSpeed);
+        return this.http.get(url, (dataset) => {
+            if (!this.checkForObservations(dataset)) {
+                (onerror || this.defaultErrorHandler)("SensorChartAPI.updateDay: the datasetSpeed does not include a datastream with an observation", dataset);
                 return;
             }
 
-            // get needed count
-            this.http.get(countUrl, (datasetCount) => {
-                if (!this.checkForObservations(datasetCount)) {
-                    (onerror || this.defaultErrorHandler)("SensorChartAPI.updateDay: the datasetCount does not include a datastream with an observation", datasetCount);
-                    return;
-                }
-                sum = this.getMediumSpeed(datasetSpeed, datasetCount);
-                if (typeof onupdate === "function") {
-                    onupdate(day, sum);
-                }
-            }, null, null, onerror || this.defaultErrorHandler);
+            const values = this.bucketSingleValues(dataset, selects, options);
+
+            onupdate(day, values);
         }, null, null, onerror || this.defaultErrorHandler);
     }
 
     /**
      * gets the sum of a year excluding todays last 5 minutes
      * @param {Integer} thingId the ID of the thing
-     * @param {String} selects the transportation as 'Anzahl_Fahrraeder' or 'Anzahl_Kfz'
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(year, value) fires initialy and anytime server site changes are made
      * @param {Function} [onerror] as function(error) to fire on error
@@ -423,16 +535,14 @@ export class SensorChartApi {
      * @param {String} [yearTodayOpt=NOW] as a String marking todays year in format YYYY; if left false, todays year is set automatically
      * @returns {Void}  -
      */
-    updateYear (thingId, selects, year, onupdate, onerror, onstart, oncomplete, yearTodayOpt) {
-        let sumYear = 0,
-            sumThisDay = 0;
+    updateYear (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, yearTodayOpt) {
+        let sumYear = 0;
         const startDate = moment(year, "YYYY").toISOString(),
             endDate = moment(year, "YYYY").add(1, "year").toISOString(),
             lastMidnight = moment().startOf("day").toISOString(),
             yearToday = yearTodayOpt || moment().format("YYYY"),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
-            urlYear = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + (year === yearToday ? lastMidnight : endDate) + "))",
-            urlThisDays5min = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + lastMidnight + "))";
+            selectString = this.getSelectString(selects),
+            urlYear = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + (year === yearToday ? lastMidnight : endDate) + "))";
 
         return this.http.get(urlYear, (datasetYear) => {
             if (!this.checkForObservations(datasetYear)) {
@@ -440,49 +550,11 @@ export class SensorChartApi {
                 return;
             }
 
-            sumYear = this.sumObservations(datasetYear);
+            sumYear = this.bucketObservations(datasetYear, selects, options);
 
             if (typeof onupdate === "function") {
                 onupdate(year, sumYear);
             }
-
-
-            if (year !== yearToday) {
-                return;
-            }
-
-            // year eq todays year
-            this.http.get(urlThisDays5min, (dataset5min) => {
-                if (!this.checkForObservations(dataset5min)) {
-                    (onerror || this.defaultErrorHandler)("SensorChartAPI.updateYear: dataset5min does not include a datastream with an observation", dataset5min);
-                }
-
-                sumThisDay = this.sumObservations(dataset5min);
-
-                if (typeof onupdate === "function") {
-                    onupdate(year, sumYear + sumThisDay);
-                }
-
-                // subscribe via mqtt
-                const datastreamId = dataset5min[0].Datastreams[0]["@iot.id"],
-                    topic = this.sensorThingsVersion + "/Datastreams(" + datastreamId + ")/Observations";
-
-                // set retain to 2 to avoid getting the last message from the server, as this message is already included in the server call above (see doc\sensorThings_EN.md)
-                this.mqttSubscribe(topic, {rh: 2}, (payload, packet) => {
-                    if (packet && Object.prototype.hasOwnProperty.call(packet, "retain") && packet.retain === true) {
-                        // this message is a retained message, so its content is already in sum
-                        return;
-                    }
-                    if (!payload || !Object.prototype.hasOwnProperty.call(payload, "result")) {
-                        (onerror || this.defaultErrorHandler)("SensorChartAPI.updateYear: the payload does not include a result", payload);
-                    }
-                    sumThisDay += payload.result;
-
-                    if (typeof onupdate === "function") {
-                        onupdate(year, sumYear + sumThisDay);
-                    }
-                });
-            }, false, oncomplete, onerror || this.defaultErrorHandler);
         }, onstart, year !== yearToday ? oncomplete : false, onerror || this.defaultErrorHandler);
     }
 
@@ -549,7 +621,8 @@ export class SensorChartApi {
     /**
      * gets the strongest day in the given year excluding today
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(date, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -557,19 +630,19 @@ export class SensorChartApi {
      * @param {Function} [oncomplete] as function() to fire after every async action no matter what
      * @returns {Void}  -
      */
-    updateHighestWorkloadDay (thingId, selects, year, onupdate, onerror, onstart, oncomplete) {
+    updateHighestWorkloadDay (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
         const startDate = moment(year, "YYYY").toISOString(),
             endDate = moment(year, "YYYY").add(1, "year").toISOString(),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
+            selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + ";$orderby=result DESC;$top=1))";
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
-                const value = this.sumObservations(dataset),
-                    date = this.getFirstDate(dataset);
+                const value = this.bucketObservations(dataset, selects, options),
+                    dates = this.bucketDates(dataset, selects, options, (date) => moment(date).format("DD.MM."));
 
                 if (typeof onupdate === "function") {
-                    onupdate(moment(date).format("YYYY-MM-DD"), value);
+                    onupdate(dates, value);
                 }
             }
             else {
@@ -581,7 +654,8 @@ export class SensorChartApi {
     /**
      * gets the strongest week in the given year excluding the current week
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(calendarWeek, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -589,19 +663,19 @@ export class SensorChartApi {
      * @param {Function} [oncomplete] as function() to fire after every async action no matter what
      * @returns {Void}  -
      */
-    updateHighestWorkloadWeek (thingId, selects, year, onupdate, onerror, onstart, oncomplete) {
+    updateHighestWorkloadWeek (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
         const startDate = moment(year, "YYYY").toISOString(),
             endDate = moment(year, "YYYY").add(1, "year").toISOString(),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
+            selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + ";$orderby=result DESC;$top=1))";
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
-                const value = this.sumObservations(dataset),
-                    date = this.getFirstDate(dataset);
+                const value = this.bucketObservations(dataset, selects, options),
+                    dates = this.bucketDates(dataset, selects, options, (date) => "KW " + moment(date).week());
 
                 if (typeof onupdate === "function") {
-                    onupdate(moment(date).week(), value);
+                    onupdate(dates, value);
                 }
             }
             else {
@@ -613,7 +687,8 @@ export class SensorChartApi {
     /**
      * gets the strongest month in the given year including the current month
      * @param {Integer} thingId the ID of the thing
-     * @param {Object} selects the choosen parameters
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} year the year as String in format YYYY
      * @param {Function} onupdate as event function(month, value)
      * @param {Function} [onerror] as function(error) to fire on error
@@ -621,38 +696,54 @@ export class SensorChartApi {
      * @param {Function} [oncomplete] as function() to fire after every async action no matter what
      * @returns {Void}  -
      */
-    updateHighestWorkloadMonth (thingId, selects, year, onupdate, onerror, onstart, oncomplete) {
+    updateHighestWorkloadMonth (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
         const startDate = moment(year, "YYYY").toISOString(),
             endDate = moment(year, "YYYY").add(1, "year").toISOString(),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
+            selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))",
-            sumMonths = {"01": 0};
-        let bestMonth = 0,
-            bestSum = 0,
-            month;
+            values = {},
+            dates = {};
+        let month;
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
-                dataset[0].Datastreams[0].Observations.forEach(observation => {
-                    if (!Object.prototype.hasOwnProperty.call(observation, "result") || !Object.prototype.hasOwnProperty.call(observation, "phenomenonTime")) {
-                        // continue
-                        return;
+                let bestMonth = 0,
+                    bestSum = 0;
+
+                dataset[0].Datastreams.forEach(datastream => {
+                    const sumMonths = {"01": 0};
+                    let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
+
+                    if (!labelString) {
+                        labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
+                    }
+                    if (!labelString && options.defaultLabel) {
+                        labelString = options.defaultLabel;
                     }
 
-                    month = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("MM");
-                    if (!Object.prototype.hasOwnProperty.call(sumMonths, month)) {
-                        sumMonths[month] = 0;
-                    }
-                    sumMonths[month] += observation.result;
+                    datastream.Observations.forEach(observation => {
+                        if (!Object.prototype.hasOwnProperty.call(observation, "result") || !Object.prototype.hasOwnProperty.call(observation, "phenomenonTime")) {
+                            // continue
+                            return;
+                        }
 
-                    if (sumMonths[month] > bestSum) {
-                        bestSum = sumMonths[month];
-                        bestMonth = month;
-                    }
+                        month = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("MM");
+                        if (!Object.prototype.hasOwnProperty.call(sumMonths, month)) {
+                            sumMonths[month] = 0;
+                        }
+                        sumMonths[month] += observation.result;
+
+                        if (sumMonths[month] > bestSum) {
+                            bestSum = sumMonths[month];
+                            bestMonth = month;
+                        }
+                    });
+                    values[labelString] = bestSum;
+                    dates[labelString] = moment(bestMonth, "MM").format("MMMM");
                 });
 
                 if (typeof onupdate === "function") {
-                    onupdate(moment(bestMonth, "MM").format("MMMM"), bestSum);
+                    onupdate(dates, values);
                 }
             }
             else {
@@ -664,7 +755,8 @@ export class SensorChartApi {
     /**
      * gets the data for a diagram or table for the given interval
      * @param {Integer} thingId the ID of the thing
-     * @param {String} selects the transportation as 'Anzahl_Fahrraeder' or 'Anzahl_Kfz'
+     * @param {Object} selects contains the current selected parameter values
+     * @param {Object} options contains the default label
      * @param {String} timeSettings configuration
      * @param {String} timeSettings.interval the interval to call as '5-Min', '1-Stunde' or '1-Woche'
      * @param {String} timeSettings.from the day to start from (inclusive) as String in format YYYY-MM-DD
@@ -676,32 +768,49 @@ export class SensorChartApi {
      * @param {String} [todayUntilOpt=NOW] as a String marking todays date in format YYYY-MM-DD; if left false, today is set automatically
      * @returns {Void}  -
      */
-    updateDataset (thingId, selects, timeSettings, onupdate, onerror, onstart, oncomplete, todayUntilOpt) {
+    updateDataset (thingId, selects, options, timeSettings, onupdate, onerror, onstart, oncomplete, todayUntilOpt) {
         const from = timeSettings.from,
             until = timeSettings.until,
             startDate = moment(from, "YYYY-MM-DD").toISOString(),
             endDate = moment(until, "YYYY-MM-DD").add(1, "day").toISOString(),
-            selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
-            labelString = Object.keys(selects).map((select) => selects[select].description + ": '" + selects[select].value + "'").join(" und "),
+            selectString = this.getSelectString(selects),
+
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime le " + endDate + ";$orderby=phenomenonTime asc))",
 
             result = {},
             todayUntil = todayUntilOpt || moment().format("YYYY-MM-DD");
 
-        result[labelString] = {};
+        let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + selects[select].value + "'").join(" und ");
 
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
-                dataset[0].Datastreams[0].Observations.forEach(observation => {
-                    if (!Object.prototype.hasOwnProperty.call(observation, "result") || !Object.prototype.hasOwnProperty.call(observation, "phenomenonTime")) {
-                        // continue
-                        return;
+                dataset[0].Datastreams.forEach(datastream => {
+                    const dateLabelFrom = moment(from, "YYYY-MM-DD").format("DD.MM.YYYY"),
+                        dateLabelUntil = moment(until, "YYYY-MM-DD").format("DD.MM.YYYY"),
+                        dateLabel = dateLabelFrom === dateLabelUntil ? dateLabelFrom : dateLabelFrom + " bis " + dateLabelUntil;
+
+                    labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
+
+                    if (!labelString) {
+                        labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
                     }
+                    if (!labelString && options.defaultLabel) {
+                        labelString = options.defaultLabel;
+                    }
+                    labelString += " " + dateLabel;
 
-                    const datetime = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
+                    result[labelString] = {};
+                    datastream.Observations.forEach(observation => {
+                        if (!Object.prototype.hasOwnProperty.call(observation, "result") || !Object.prototype.hasOwnProperty.call(observation, "phenomenonTime")) {
+                            // continue
+                            return;
+                        }
 
-                    result[labelString][datetime] = observation.result;
+                        const datetime = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
+
+                        result[labelString][datetime] = observation.result;
+                    });
                 });
 
                 if (typeof onupdate === "function") {
@@ -741,6 +850,19 @@ export class SensorChartApi {
     }
 
     /**
+     * Builds the select String for STA-Request from selected options
+     * @param {Object} selects Selected Parameter
+     * @returns {string} the URL-Parameter
+     */
+    getSelectString (selects) {
+        return Object.keys(selects).map(
+            (select) => Array.isArray(selects[select].value) ?
+                "(" + selects[select].value.map(selectValue => "(properties/" + select + " eq '" + selectValue + "')").join(" or ") + ")"
+                : "(properties/" + select + " eq '" + selects[select].value + "')"
+        ).join(" and ");
+    }
+
+    /**
      * subscribes the last change of data based on 5 minutes
      * @param {Integer} thingId the ID of the thing
      * @param {Object} selects the choosen parameters
@@ -751,7 +873,7 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     subscribeLastUpdate (thingId, selects, onupdate, onerror, onstart, oncomplete) {
-        const selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and ");
+        const selectString = this.getSelectString(selects);
         let url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams";
 
         if (Object.keys(selects).length > 0) {
@@ -833,19 +955,20 @@ export class SensorChartApi {
      * @param {String} timeSettings.interval the interval to call as '5-Min', '1-Stunde' or '1-Woche'
      * @param {String} timeSettings.from the day to start from (inclusive) as String in format YYYY-MM-DD
      * @param {String} timeSettings.until the day to end with (inclusive) as String in format YYYY-MM-DD
+     * @param {Object} options contains the default label
      * @param {Function} onsuccess as event function(result) with result{title, dataset} and dataset{meansOfTransport: {date: value}}; fired once on success (no subscription)
      * @param {Function} [onerror] as function(error) to fire on error
      * @param {Function} [onstart] as function() to fire before any async action has started
      * @param {Function} [oncomplete] as function() to fire after every async action no matter what
      * @returns {Void}  -
      */
-    downloadData (thingId, meansOfTransport, timeSettings, onsuccess, onerror, onstart, oncomplete) {
+    downloadData (thingId, meansOfTransport, timeSettings, options, onsuccess, onerror, onstart, oncomplete) {
         if (typeof onstart === "function") {
             onstart();
         }
 
         this.updateTitle(thingId, title => {
-            this.updateDataset(thingId, meansOfTransport, timeSettings, dataset => {
+            this.updateDataset(thingId, meansOfTransport, timeSettings, options, dataset => {
                 if (typeof onsuccess === "function") {
                     onsuccess({
                         title: title,
@@ -898,7 +1021,7 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     getUnitOfMeasurement (thingId, selects, interval, onsuccess, onerror, onstart, oncomplete) {
-        const selectString = Object.keys(selects).map((select) => "(properties/" + select + " eq '" + selects[select].value + "')").join(" and "),
+        const selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ")";
 
         return this.http.get(url, (dataset) => {
