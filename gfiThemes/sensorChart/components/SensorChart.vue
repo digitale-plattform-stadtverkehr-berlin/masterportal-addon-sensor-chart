@@ -148,13 +148,15 @@ export default {
                         headerProperty = {
                             name: hpKey,
                             label: "",
-                            value: ""
+                            value: "",
+                            model: ""
                         };
                     let hpLabel,
                         hpDefault,
                         hpInfo,
                         isSelect = false,
-                        isMultiple = false;
+                        isMultiple = false,
+                        isSelectAll = false;
 
                     if (typeof hpDef === "string") {
                         hpLabel = hpDef;
@@ -169,14 +171,19 @@ export default {
                         if (hpDef.isMultiple) {
                             isMultiple = true;
                         }
+                        if (hpDef.isSelectAll) {
+                            isSelectAll = true;
+                        }
                     }
                     headerProperty.label = hpLabel;
 
                     if (isSelect) {
                         headerProperty.isSelect = true;
                         headerProperty.isMultiple = isMultiple;
+                        headerProperty.isSelectAll = isSelectAll;
                         if (hpDefault) {
                             headerProperty.default = hpDefault;
+                            headerProperty.model = hpDefault;
                         }
                     }
 
@@ -315,7 +322,8 @@ export default {
          * @returns {Void} -
          */
         setSelectedValue: function (field, values) {
-            const newSelects = {};
+            const newSelects = {},
+                headerProperty = this.headerProperties.find(headerProperty => headerProperty.name === field);
 
             newSelects[field] = {};
 
@@ -323,7 +331,13 @@ export default {
                 newSelects[key] = this.selectedValues[key];
             });
 
-            newSelects[field].value = values;
+            if (values.length > 0) {
+                newSelects[field].value = values;
+            }
+            else {
+                newSelects[field].value = headerProperty.default;
+                headerProperty.model = headerProperty.default;
+            }
             this.selectedValues = newSelects;
         },
 
@@ -489,18 +503,23 @@ export default {
                             <td class="box">
                                 <label>
                                     <Multiselect
-                                        v-model="headerProperty.default"
-                                        :options="headerProperty.value"
+                                        v-model="headerProperty.model"
+                                        :options="(headerProperty.isMultiple && headerProperty.isSelectAll)?[{'all': 'Alle', 'values': headerProperty.value}]:headerProperty.value"
+                                        :group-values="(headerProperty.isMultiple && headerProperty.isSelectAll)? 'values' : undefined"
+                                        :group-label="(headerProperty.isMultiple && headerProperty.isSelectAll)? 'all' : undefined"
+                                        :group-select="(headerProperty.isMultiple && headerProperty.isSelectAll)"
                                         :multiple="headerProperty.isMultiple"
                                         :preselect-first="false"
                                         :searchable="false"
+                                        deselect-group-label=""
                                         select-label=""
                                         deselect-label=""
                                         selected-label=""
                                         placeholder=""
+                                        select-group-label=""
                                         :allow-empty="false"
 
-                                        :value="headerProperty.default"
+                                        :value="headerProperty.model"
                                         @input="setSelectedValue(headerProperty.name, $event)"
                                     />
                                 </label>

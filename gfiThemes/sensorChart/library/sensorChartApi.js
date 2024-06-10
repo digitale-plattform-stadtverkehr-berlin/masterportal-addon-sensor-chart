@@ -542,7 +542,7 @@ export class SensorChartApi {
             lastMidnight = moment().startOf("day").toISOString(),
             yearToday = yearTodayOpt || moment().format("YYYY"),
             selectString = this.getSelectString(selects),
-            urlYear = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + (year === yearToday ? lastMidnight : endDate) + "))";
+            urlYear = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + (year === yearToday ? lastMidnight : endDate) + ";$orderBy=phenomenonTime asc))";
 
         return this.http.get(urlYear, (datasetYear) => {
             if (!this.checkForObservations(datasetYear)) {
@@ -707,12 +707,12 @@ export class SensorChartApi {
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
-                let bestMonth = 0,
-                    bestSum = 0;
 
                 dataset[0].Datastreams.forEach(datastream => {
                     const sumMonths = {"01": 0};
-                    let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
+                    let bestMonth = 0,
+                        bestSum = 0,
+                        labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
 
                     if (!labelString) {
                         labelString = Object.keys(selects).filter(select => selects[select].isDefaultLabel).map((select) => datastream.properties[select]).join("");
