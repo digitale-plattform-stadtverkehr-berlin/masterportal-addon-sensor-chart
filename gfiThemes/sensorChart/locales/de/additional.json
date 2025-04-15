@@ -27,7 +27,7 @@
                         "clockLabel": "Uhr",
                         "tableLabel": "Tabelle",
                         "notice": "Aufgrund nicht verfügbarer Daten können Lücken im Diagramm und leere Tabellenzellen auftreten. Einzelne abweichende Messwerte sind ggf. als Punkte angezeigt.",
-                        "lastupdateLabel": "Letzte Aktualisierung:",
+                        "lastupdateLabel": "Letzte Aktualisierung",
                         "diagramLabel": "Diagramm",
                         "calendarweek": "KW",
                         "infraredsensor": "Infrarotsensor",

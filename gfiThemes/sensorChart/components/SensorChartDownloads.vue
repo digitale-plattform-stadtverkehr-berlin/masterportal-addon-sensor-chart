@@ -1,7 +1,7 @@
 <script>
-import moment from "moment";
-import ExportButtonModel from "../snippets/exportButton/model";
-import ExportButtonView from "../snippets/exportButton/view";
+import dayjs from "dayjs";
+//import ExportButtonModel from "../snippets/exportButton/model";
+//import ExportButtonView from "../snippets/exportButton/view";
 
 export default {
     name: "SensorChartDownloads",
@@ -64,14 +64,18 @@ export default {
             dayInterval: this.motDayInterval,
             weekInterval: "1-Tag",
             yearInterval: "1-Woche",
+            exportModel: {}
+            /*
             exportModel: new ExportButtonModel({
                 tag: "Download CSV",
                 rawData: [],
                 fileExtension: "csv"
             })
+             */
         };
     },
     computed: {
+        /*
         exportView: function () {
             return new ExportButtonView({
                 model: this.exportModel
@@ -81,6 +85,7 @@ export default {
         exportButtonTemplate: function () {
             return this.exportView.render().el;
         }
+         */
     },
     methods: {
 
@@ -177,8 +182,8 @@ export default {
             const api = this.api,
                 timeSet = {
                     interval: this.dayInterval,
-                    from: moment().subtract(7, "days").format("YYYY-MM-DD"),
-                    until: moment().format("YYYY-MM-DD")
+                    from: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
+                    until: dayjs().format("YYYY-MM-DD")
                 };
 
             api.downloadData(thingId, meansOfTransport, {defaultLabel: this.label}, timeSet, onsuccess, onerror, onstart, oncomplete);
@@ -253,8 +258,8 @@ export default {
             class="button-container"
             @click="exportFile"
             @keydown.enter="exportFile"
-            v-html="exportButtonTemplate.innerHTML"
         />
+            <!--v-html="exportButtonTemplate.innerHTML"-->
     </div>
 </template>
 

@@ -1,5 +1,7 @@
 <script>
-import ChartJs from "chart.js";
+import ChartJs from "chart.js/auto";
+import {mapGetters} from "vuex";
+import {shallowRef} from "vue";
 
 export default {
     name: "SensorChartCompDiagram",
@@ -118,9 +120,15 @@ export default {
             chart: null
         };
     },
+    computed: {
+        ...mapGetters("Modules/SensorChart", [
+            "activeTabId"
+        ])
+    },
     watch: {
         apiData (newData, oldValue) {
             if (!oldValue.length) {
+                this.destroyChart();
                 this.chartData = this.createDataForDiagram(newData, this.colors, this.renderLabelLegend);
                 this.createChart(this.chartData, this.ctx);
             }
@@ -129,27 +137,25 @@ export default {
                 this.chart.update(this.updateAnimation);
             }
             else {
-                this.chart.destroy();
+                this.destroyChart();
             }
         },
         renderLabelXAxis (newData) {
-            this.chart.options.scales.xAxes[0].ticks.callback = newData;
+            this.chart.options.scales.x.ticks.callback = (xValue) => {
+                return newData(this.chart.data.labels[xValue]);
+            };
         },
         descriptionYAxis (newData) {
-            this.chart.options.scales.yAxes[0].scaleLabel.labelString = newData;
+            this.chart.options.scales.y.title.text = newData;
+            this.chart.options.scales.y.title.display = Boolean(newData);
+        },
+        activeTabId () {
+            this.destroyChart();
         }
     },
     mounted () {
         this.chartData = this.createDataForDiagram(this.apiData, this.colors, this.renderLabelLegend);
         this.ctx = this.$el.getElementsByTagName("canvas")[0].getContext("2d");
-
-        /**
-         * @see afterFit https://www.chartjs.org/docs/latest/axes/?h=afterfit
-         * @returns {Void}  -
-         */
-        ChartJs.Legend.prototype.afterFit = function () {
-            this.height = this.height + 10;
-        };
 
         this.createChart(this.chartData, this.ctx);
     },
@@ -205,7 +211,7 @@ export default {
          * @returns {Void}  -
          */
         createChart (data, ctx) {
-            this.chart = new ChartJs(ctx, this.getChartJsConfig(data, {
+            this.chart = shallowRef(new ChartJs(ctx, this.getChartJsConfig(data, {
                 colorTooltipFont: this.colorTooltipFont,
                 colorTooltipBack: this.colorTooltipBack,
                 setTooltipValue: this.setTooltipValue,
@@ -220,7 +226,17 @@ export default {
                 renderLabelYAxis: this.renderLabelYAxis,
                 descriptionXAxis: this.descriptionXAxis,
                 descriptionYAxis: this.descriptionYAxis
-            }));
+            })));
+        },
+        /**
+         * Destroys the current chart if exists.
+         * @returns {void}
+         */
+        destroyChart () {
+            if (this.chart instanceof ChartJs) {
+                this.chart.destroy();
+                this.chart = null;
+            }
         },
         /**
          * creates the datasets for chartjs
@@ -339,6 +355,8 @@ export default {
                     title: {
                         display: false
                     },
+                    responsive: true,
+                    maintainAspectRatio: false,
                     elements: {
                         line: {
                             tension: 0
@@ -418,16 +436,16 @@ export default {
                         }
                     },
                     scales: {
-                        xAxes: [{
+                        x: {
                             display: true,
+                            beginAtZero: true,
                             ticks: {
                                 fontSize: options.fontSizeGraph,
                                 fontColor: options.fontColorGraph,
-                                beginAtZero: true,
                                 autoSkip: true,
                                 maxTicksLimit: options.xAxisTicks,
                                 callback: (xValue) => {
-                                    return options.renderLabelXAxis(xValue);
+                                    return options.renderLabelXAxis(data.labels[xValue]);
                                 }
                             },
                             gridLines: {
@@ -436,15 +454,15 @@ export default {
                                 drawBorder: true,
                                 drawOnChartArea: false
                             },
-                            scaleLabel: {
+                            title: {
                                 display: Boolean(options.descriptionXAxis),
-                                labelString: options.descriptionXAxis
+                                text: options.descriptionXAxis
                             }
-                        }],
-                        yAxes: [{
+                        },
+                        y: {
                             display: true,
+                            beginAtZero: true,
                             ticks: {
-                                beginAtZero: true,
                                 fontSize: options.fontSizeGraph,
                                 fontColor: options.fontColorGraph,
                                 maxTicksLimit: options.yAxisTicks,
@@ -458,11 +476,11 @@ export default {
                                 drawBorder: true,
                                 drawOnChartArea: false
                             },
-                            scaleLabel: {
+                            title: {
                                 display: Boolean(options.descriptionYAxis),
                                 labelString: options.descriptionYAxis
                             }
-                        }]
+                        }
                     }
                 }
             };
@@ -472,15 +490,11 @@ export default {
 </script>
 
 <template>
-    <div>
-        <div
-            v-if="chart"
-            class="custom-legend"
-            v-html="chart.generateLegend()"
+    <div class="graph">
+        <canvas
+            :id="`trafficCountChart_${activeTabId}`"
+            :ref="`trafficCountChart_${activeTabId}`"
         />
-        <div class="graph">
-            <canvas />
-        </div>
     </div>
 </template>
 

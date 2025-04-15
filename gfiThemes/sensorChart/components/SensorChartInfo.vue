@@ -1,7 +1,9 @@
 <script>
-import moment from "moment";
-import thousandsSeparator from "../../../../src/utils/thousandsSeparator";
+import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import thousandsSeparator from "../../../../src/shared/js/utils/thousandsSeparator.js";
 
+dayjs.extend(advancedFormat);
 
 export default {
     name: "SensorChartInfo",
@@ -185,36 +187,36 @@ export default {
             // SPEED
             if (this.isSingleValueMode) {
                 // update day speed medium today
-                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().format("YYYY-MM-DD"), (date, values) => {
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, dayjs().format("YYYY-MM-DD"), (date, values) => {
 
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
                     });
-                    this.setDescToday(moment().format("dd Do MM YYYY"));
+                    this.setDescToday(dayjs().format("dd Do MM YYYY"));
                     this.setTotalMediumToday(values);
                 }, errormsg => {
                     this.setDescToday({"(nicht empfangen)": "(nicht empfangen)"});
                     this.setTotalMediumToday({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update today is incomplete:", errormsg);
                 });
-                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().subtract(1, "days").format("YYYY-MM-DD"), (date, values) => {
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, dayjs().subtract(1, "days").format("YYYY-MM-DD"), (date, values) => {
 
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
                     });
-                    this.setDescYesterday(moment().format("dd Do MM YYYY"));
+                    this.setDescYesterday(dayjs().format("dd Do MM YYYY"));
                     this.setTotalMediumYesterday(values);
                 }, errormsg => {
                     this.setDescYesterday({"(nicht empfangen)": "(nicht empfangen)"});
                     this.setTotalMediumYesterday({"(nicht empfangen)": "(nicht empfangen)"});
                     console.warn("The last update today is incomplete:", errormsg);
                 });
-                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, moment().subtract(2, "days").format("YYYY-MM-DD"), (date, values) => {
+                api.updateDaySingle(thingId, daySelects, {defaultLabel: this.label}, dayjs().subtract(2, "days").format("YYYY-MM-DD"), (date, values) => {
 
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
                     });
-                    this.setDescTwoDaysAgo(moment().format("dd Do MM YYYY"));
+                    this.setDescTwoDaysAgo(dayjs().format("dd Do MM YYYY"));
                     this.setTotalMediumTwoDaysAgo(values);
                 }, errormsg => {
                     this.setDescTwoDaysAgo({"(nicht empfangen)": "(nicht empfangen)"});
@@ -223,7 +225,7 @@ export default {
                 });
             }
             else {
-                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, moment().format("YYYY"), (year, values) => {
+                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, dayjs().format("YYYY"), (year, values) => {
                     this.setThisYearDesc(typeof year === "string" ? "01.01." + year : "");
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
@@ -239,7 +241,7 @@ export default {
                     });
                 });
 
-                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, moment().subtract(1, "year").format("YYYY"), (year, values) => {
+                api.updateYear(thingId, yearSelects, {defaultLabel: this.label}, dayjs().subtract(1, "year").format("YYYY"), (year, values) => {
                     this.setLastYearDesc(typeof year === "string" ? year : "");
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
@@ -255,8 +257,8 @@ export default {
                     });
                 });
 
-                api.updateDay(thingId, daySelects, {defaultLabel: this.label}, dayInterval, moment().subtract(1, "day").format("YYYY-MM-DD"), (date, values) => {
-                    this.setLastDayDesc(typeof date === "string" ? moment(date, "YYYY-MM-DD").format("DD.MM.YYYY") : "");
+                api.updateDay(thingId, daySelects, {defaultLabel: this.label}, dayInterval, dayjs().subtract(1, "day").format("YYYY-MM-DD"), (date, values) => {
+                    this.setLastDayDesc(typeof date === "string" ? dayjs(date, "YYYY-MM-DD").format("DD.MM.YYYY") : "");
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
                     });
@@ -271,7 +273,7 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadDay(thingId, daySelects, {defaultLabel: this.label}, moment().format("YYYY"), (dates, values) => {
+                api.updateHighestWorkloadDay(thingId, daySelects, {defaultLabel: this.label}, dayjs().format("YYYY"), (dates, values) => {
                     this.setHighestWorkloadDayDesc(dates);
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
@@ -287,7 +289,7 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadWeek(thingId, weekSelects, {defaultLabel: this.label}, moment().format("YYYY"), (weeks, values) => {
+                api.updateHighestWorkloadWeek(thingId, weekSelects, {defaultLabel: this.label}, dayjs().format("YYYY"), (weeks, values) => {
                     this.setHighestWorkloadWeekDesc(weeks);
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);
@@ -303,7 +305,7 @@ export default {
                     });
                 });
 
-                api.updateHighestWorkloadMonth(thingId, monthSelects, {defaultLabel: this.label}, moment().format("YYYY"), (months, values) => {
+                api.updateHighestWorkloadMonth(thingId, monthSelects, {defaultLabel: this.label}, dayjs().format("YYYY"), (months, values) => {
                     this.setHighestWorkloadMonthDesc(months);
                     Object.keys(values).forEach(label => {
                         values[label] = thousandsSeparator(values[label]);

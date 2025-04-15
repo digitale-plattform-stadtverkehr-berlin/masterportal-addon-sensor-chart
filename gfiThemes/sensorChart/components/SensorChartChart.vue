@@ -3,14 +3,21 @@ import SensorChartCompDiagram from "./SensorChartCompDiagram.vue";
 import SensorChartCompTable from "./SensorChartCompTable.vue";
 // import SensorChartCheckbox from "./SensorChartCheckbox.vue";
 import SensorChartDownloads from "./SensorChartDownloads.vue";
-import thousandsSeparator from "../../../../src/utils/thousandsSeparator.js";
-import moment from "moment";
+import thousandsSeparator from "../../../../src/shared/js/utils/thousandsSeparator.js";
+import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import minMax  from "dayjs/plugin/minMax";
 
-import DatePicker from "vue2-datepicker";
-import "vue2-datepicker/index.css";
-import "vue2-datepicker/locale/de";
+import DatePicker from "vue-datepicker-next";
+import "vue-datepicker-next/index.css";
 
-import {addMissingDataFlex} from "../library/addMissingData.js";
+import {addMissingDataFlex} from "../utils/addMissingData.js";
+import {mapGetters} from "vuex";
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(minMax);
 
 export default {
     name: "SensorChartChart",
@@ -71,12 +78,12 @@ export default {
 
             // props for diagram
             setTooltipValue: (tooltipItem) => {
-                return moment(tooltipItem.datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel") + ": " + thousandsSeparator(tooltipItem.value);
+                return dayjs(tooltipItem.datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel") + ": " + thousandsSeparator(tooltipItem.value);
             },
             xAxisTicks: 12,
             yAxisTicks: 8,
             renderLabelXAxis: (datetime) => {
-                return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
             },
             renderLabelYAxis: (yValue) => {
                 return thousandsSeparator(yValue);
@@ -100,10 +107,10 @@ export default {
 
             },
             setColTitle: datetime => {
-                return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
             },
             setRowTitle: (meansOfTransports, datetime) => {
-                return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY");
+                return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY");
             },
             setFieldValue: value => {
                 return thousandsSeparator(value);
@@ -135,14 +142,14 @@ export default {
         }
     },
     created () {
-        moment.locale(i18next.language);
-        this.dates = [moment().subtract(this.dayStartOffset, "days").startOf("day").toDate(), moment().subtract(this.dayStartOffset, "days").endOf("day").toDate()];
+        dayjs.locale(i18next.language);
+        this.dates = [dayjs().subtract(this.dayStartOffset, "days").startOf("day").toDate(), dayjs().subtract(this.dayStartOffset, "days").endOf("day").toDate()];
     },
     mounted () {
         this.setMeasureName();
 
         // hack for setting cur month in 2nd calendar instead of next month when next date is in cur month
-        const updateCalendars = DatePicker.CalendarRange.methods.updateCalendars;
+        //const updateCalendars = DatePicker.CalendarRange.methods.updateCalendars;
 
 
         /**
@@ -150,15 +157,21 @@ export default {
             const next = new Date(v);
 
             if (idx === 1) {
-                next.setMonth(moment().add(1, "days").toDate());
+                next.setMonth(dayjs().add(1, "days").toDate());
             }
             return next;
         });
          **/
-
+/*
         DatePicker.CalendarRange.methods.updateCalendars = function (...args) {
             updateCalendars.apply(this, args);
         };
+ */
+    },
+    computed: {
+        ...mapGetters("Modules/SensorChart", [
+            "activeTabId"
+        ])
     },
     methods: {
         setMeasureName: function () {
@@ -180,20 +193,20 @@ export default {
         },
 
         calcAdditionalEndDate: function (startDate) {
-            const timespan = moment.duration(moment(this.dates[1]).diff(moment(this.dates[0])));
+            const timespan = dayjs.duration(dayjs(this.dates[1]).diff(dayjs(this.dates[0])));
 
-            return moment(startDate).add(timespan.asSeconds(), "seconds");
+            return dayjs(startDate).add(timespan.asSeconds(), "seconds");
         },
 
         setXAxis: function () {
-            const timespan = moment.duration(moment(this.dates[1]).diff(moment(this.dates[0])));
+            const timespan = dayjs.duration(dayjs(this.dates[1]).diff(dayjs(this.dates[0])));
 
             if (timespan.asDays() >= 365) {
                 this.renderLabelXAxis = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setColTitle = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setRowTitle = (meansOfTransports) => {
                     return meansOfTransports;
@@ -201,10 +214,10 @@ export default {
             }
             else if (timespan.asDays() > 4) {
                 this.renderLabelXAxis = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM. HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM. HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setColTitle = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM. HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM. HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setRowTitle = (meansOfTransports) => {
                     return meansOfTransports;
@@ -212,13 +225,13 @@ export default {
             }
             else if (timespan.asHours() > 24) {
                 this.renderLabelXAxis = (datetime) => {
-                    const timeStamp = moment(datetime, "YYYY-MM-DD HH:mm:ss"),
+                    const timeStamp = dayjs(datetime, "YYYY-MM-DD HH:mm:ss"),
                         timeString = timeStamp.hour() === 0 && timeStamp.minute() === 0 ? timeStamp.format("DD.MM. HH:mm") : timeStamp.format("HH:mm");
 
                     return timeString + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setColTitle = (datetime) => {
-                    const timeStamp = moment(datetime, "YYYY-MM-DD HH:mm:ss"),
+                    const timeStamp = dayjs(datetime, "YYYY-MM-DD HH:mm:ss"),
                         timeString = timeStamp.hour() === 0 && timeStamp.minute() === 0 ? timeStamp.format("DD.MM. HH:mm") : timeStamp.format("HH:mm");
 
                     return timeString + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
@@ -229,10 +242,10 @@ export default {
             }
             else {
                 this.renderLabelXAxis = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setColTitle = (datetime) => {
-                    return moment(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
+                    return dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("HH:mm") + " " + this.$t("additional:modules.tools.gfi.themes.sensorChart.clockLabel");
                 };
                 this.setRowTitle = (meansOfTransports) => {
                     return meansOfTransports;
@@ -250,9 +263,9 @@ export default {
             const curInterval = this.selects[this.intervals.field].value,
                 maxDuration = this.intervals.values[curInterval].maxLength,
                 startOf = this.intervals.values[curInterval].startOf,
-                endTimeLimit = moment.min(moment().endOf("date"), moment(mdates[0]).clone().add(startOf, maxDuration));
+                endTimeLimit = dayjs.min(dayjs().endOf("date"), dayjs(mdates[0]).clone().add(startOf, maxDuration));
 
-            if (moment(mdates[1]).isAfter(endTimeLimit)) {
+            if (dayjs(mdates[1]).isAfter(endTimeLimit)) {
                 Radio.trigger("Alert", "alert", {
                     content: "Maximale Anzahl an " + curInterval + " erreicht, schneide Endzeitpunkt auf " + endTimeLimit.startOf("day").format("DD.MM.YYYY") + " ab", category: "Info"
                 });
@@ -273,16 +286,16 @@ export default {
                 intervalField = this.intervals.field,
                 intervalKey = this.selects[intervalField].value,
                 intervalEntry = this.intervals.values[intervalKey],
-                diff = moment(this.dates[1]).clone().endOf(intervalEntry.startOf).diff(moment(this.dates[0]).clone().startOf(intervalEntry.startOf));
+                diff = dayjs(this.dates[1]).clone().endOf(intervalEntry.startOf).diff(dayjs(this.dates[0]).clone().startOf(intervalEntry.startOf));
 
             timeSettings.push({
-                from: moment(this.dates[0]).clone().startOf(intervalEntry.startOf),
-                until: moment(this.dates[1]).clone().endOf(intervalEntry.startOf)
+                from: dayjs(this.dates[0]).clone().startOf(intervalEntry.startOf),
+                until: dayjs(this.dates[1]).clone().endOf(intervalEntry.startOf)
             });
             this.additionalDates.forEach(date => {
                 timeSettings.push({
-                    from: moment(date).clone().startOf(intervalEntry.startOf),
-                    until: moment(date).clone().startOf(intervalEntry.startOf).add(diff)
+                    from: dayjs(date).clone().startOf(intervalEntry.startOf),
+                    until: dayjs(date).clone().startOf(intervalEntry.startOf).add(diff)
                 });
             });
 
@@ -290,8 +303,8 @@ export default {
                 this.doInterpolate = false;
                 if (Array.isArray(datasets)) {
                     datasets.forEach((transportData, idx) => {
-                        const from = typeof timeSettings[idx] === "object" ? moment(timeSettings[idx].from).format("YYYY-MM-DD") + " 00:00:00" : "",
-                            until = typeof timeSettings[idx] === "object" ? moment(timeSettings[idx].until).format("YYYY-MM-DD") + " 23:59:59" : "";
+                        const from = typeof timeSettings[idx] === "object" ? dayjs(timeSettings[idx].from).format("YYYY-MM-DD") + " 00:00:00" : "",
+                            until = typeof timeSettings[idx] === "object" ? dayjs(timeSettings[idx].until).format("YYYY-MM-DD") + " 23:59:59" : "";
 
                         Object.keys(transportData).forEach(transportKey => {
                             datasets[idx][transportKey] = addMissingDataFlex(from, until, datasets[idx][transportKey], intervalEntry);
@@ -326,10 +339,10 @@ export default {
             if (!(date instanceof Date)) {
                 return true;
             }
-            if (date > moment().subtract(this.dayStartOffset, "days").endOf("day")) { // >= tomorrow
+            if (date > dayjs().subtract(this.dayStartOffset, "days").endOf("day")) { // >= tomorrow
                 return true;
             }
-            return date < moment(this.archiveStartDate);
+            return date < dayjs(this.archiveStartDate);
         },
 
         /**
@@ -346,7 +359,7 @@ export default {
          * @returns {Void} -
          */
         formatDate: function (date) {
-            return moment(date).format("DD.MM.YYYY");
+            return dayjs(date).format("DD.MM.YYYY");
         },
 
         /**
@@ -375,19 +388,21 @@ export default {
 </script>
 
 <template>
-    <div>
+    <div
+        class="chart-tab"
+    >
         <div
             :id="'dayDateRangeSelector'+motId"
             class="dateRangeSelector"
         >
             <section>
                 <DatePicker
-                    v-model="dates"
+                    v-model:value="dates"
                     type="date"
                     class="tight-picker"
                     range
                     :disabled-date="isDateDisabled"
-                    range-separator=" bis "
+                    separator=" bis "
                     :editable="false"
                     :clearable="false"
                 />
@@ -418,12 +433,12 @@ export default {
             </div>
             <section>
                 <DatePicker
-                    v-model="additionalDate"
+                    v-model:value="additionalDate"
                     type="date"
                     :disabled-date="isDateDisabled"
                     :editable="false"
                     :clearable="false"
-                    :open.sync="open"
+                    v-model:open="open"
                     @change="addDate"
                 />
             </section>
@@ -530,6 +545,10 @@ h5 {
   color: #000000;
   margin: 6px 6px 0 0;
   display: inline-block;
+}
+
+.chart-tab {
+    padding: 0 5px;
 }
 </style>
 

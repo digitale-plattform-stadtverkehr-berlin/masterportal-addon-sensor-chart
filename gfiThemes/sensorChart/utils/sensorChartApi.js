@@ -1,9 +1,16 @@
-import {SensorThingsMqtt} from "../../../../src/utils/sensorThingsMqtt.js";
-import {SensorThingsHttp} from "../../../../src/utils/sensorThingsHttp.js";
-import moment from "moment";
+import {SensorThingsMqtt} from "../../../../src/shared/js/api/sensorThingsMqtt.js";
+import {SensorThingsHttp} from "../../../../src/shared/js/api/sensorThingsHttp.js";
+import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
+import weekOfYear from "dayjs/plugin/weekOfYear";
 
-// change language from moment.js to german
-moment.locale("de");
+dayjs.extend(isoWeek);
+dayjs.extend(weekOfYear);
+
+
+// change language from day.js to german
+require("dayjs/locale/de.js");
+dayjs.locale("de");
 
 /**
  * SensorChartApi is the api for the SensorChart GFI Theme
@@ -259,7 +266,7 @@ export class SensorChartApi {
         }
 
         // set firstDate to today
-        let firstDate = firstDateSoFar || moment().toISOString(),
+        let firstDate = firstDateSoFar || dayjs().toISOString(),
             phenomenonTime = "";
 
         dataset[0].Datastreams[0].Observations.forEach(observation => {
@@ -295,7 +302,7 @@ export class SensorChartApi {
 
         dataset[0].Datastreams.forEach(datastream => {
             let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und "),
-                firstDate = firstDateSoFar || moment().toISOString(),
+                firstDate = firstDateSoFar || dayjs().toISOString(),
                 phenomenonTime = "";
 
             if (!labelString) {
@@ -447,8 +454,8 @@ export class SensorChartApi {
      */
     updateDay (thingId, selects, options, dayInterval, day, onupdate, onerror, onstart, oncomplete, dayTodayOpt) {
         let sum = 0;
-        const startDate = moment(day, "YYYY-MM-DD").toISOString(),
-            endDate = moment(day, "YYYY-MM-DD").add(1, "day").toISOString(),
+        const startDate = dayjs(day, "YYYY-MM-DD").toISOString(),
+            endDate = dayjs(day, "YYYY-MM-DD").add(1, "day").toISOString(),
             selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))";
 
@@ -465,7 +472,7 @@ export class SensorChartApi {
             }
 
             // if day equals dayToday: make a mqtt subscription to refresh sum
-            if (day !== (dayTodayOpt || moment().format("YYYY-MM-DD"))) {
+            if (day !== (dayTodayOpt || dayjs().format("YYYY-MM-DD"))) {
                 return;
             }
 
@@ -504,8 +511,8 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     updateDaySingle (thingId, selects, options, day, onupdate, onerror) {
-        const startDate = moment(day, "YYYY-MM-DD").startOf("day").toISOString(),
-            endDate = moment(day, "YYYY-MM-DD").startOf("day").add(1, "day").toISOString(),
+        const startDate = dayjs(day, "YYYY-MM-DD").startOf("day").toISOString(),
+            endDate = dayjs(day, "YYYY-MM-DD").startOf("day").add(1, "day").toISOString(),
             selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))";
 
@@ -537,10 +544,10 @@ export class SensorChartApi {
      */
     updateYear (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete, yearTodayOpt) {
         let sumYear = 0;
-        const startDate = moment(year, "YYYY").toISOString(),
-            endDate = moment(year, "YYYY").add(1, "year").toISOString(),
-            lastMidnight = moment().startOf("day").toISOString(),
-            yearToday = yearTodayOpt || moment().format("YYYY"),
+        const startDate = dayjs(year, "YYYY").toISOString(),
+            endDate = dayjs(year, "YYYY").add(1, "year").toISOString(),
+            lastMidnight = dayjs().startOf("day").toISOString(),
+            yearToday = yearTodayOpt || dayjs().format("YYYY"),
             selectString = this.getSelectString(selects),
             urlYear = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + (year === yearToday ? lastMidnight : endDate) + ";$orderBy=phenomenonTime asc))";
 
@@ -573,7 +580,7 @@ export class SensorChartApi {
         let sumWeekly = 0,
             sumThisWeek = 0,
             firstDate = false;
-        const lastMonday = moment().startOf("isoWeek").toISOString(),
+        const lastMonday = dayjs().startOf("isoWeek").toISOString(),
             urlWeekly = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=properties/layerName eq '" + meansOfTransport + this.layerNameInfix + "_1-Woche';$expand=Observations($filter=phenomenonTime lt " + lastMonday + "))",
             urlThisWeeks5min = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=properties/layerName eq '" + meansOfTransport + this.layerNameInfix + "_" + dayInterval + "';$expand=Observations($filter=phenomenonTime ge " + lastMonday + "))";
 
@@ -592,7 +599,7 @@ export class SensorChartApi {
                 firstDate = this.getFirstDate(dataset5min, firstDate);
 
                 if (typeof onupdate === "function") {
-                    onupdate(moment(firstDate).format("YYYY-MM-DD"), sumWeekly + sumThisWeek);
+                    onupdate(dayjs(firstDate).format("YYYY-MM-DD"), sumWeekly + sumThisWeek);
                 }
 
                 // subscribe via mqtt
@@ -611,7 +618,7 @@ export class SensorChartApi {
                     sumThisWeek += payload.result;
 
                     if (typeof onupdate === "function") {
-                        onupdate(moment(firstDate).format("YYYY-MM-DD"), sumWeekly + sumThisWeek);
+                        onupdate(dayjs(firstDate).format("YYYY-MM-DD"), sumWeekly + sumThisWeek);
                     }
                 });
             }, false, oncomplete, onerror || this.defaultErrorHandler);
@@ -631,15 +638,15 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     updateHighestWorkloadDay (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
-        const startDate = moment(year, "YYYY").toISOString(),
-            endDate = moment(year, "YYYY").add(1, "year").toISOString(),
+        const startDate = dayjs(year, "YYYY").toISOString(),
+            endDate = dayjs(year, "YYYY").add(1, "year").toISOString(),
             selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + ";$orderby=result DESC;$top=1))";
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
                 const value = this.bucketObservations(dataset, selects, options),
-                    dates = this.bucketDates(dataset, selects, options, (date) => moment(date).format("DD.MM."));
+                    dates = this.bucketDates(dataset, selects, options, (date) => dayjs(date).format("DD.MM."));
 
                 if (typeof onupdate === "function") {
                     onupdate(dates, value);
@@ -664,15 +671,15 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     updateHighestWorkloadWeek (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
-        const startDate = moment(year, "YYYY").toISOString(),
-            endDate = moment(year, "YYYY").add(1, "year").toISOString(),
+        const startDate = dayjs(year, "YYYY").toISOString(),
+            endDate = dayjs(year, "YYYY").add(1, "year").toISOString(),
             selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + ";$orderby=result DESC;$top=1))";
 
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
                 const value = this.bucketObservations(dataset, selects, options),
-                    dates = this.bucketDates(dataset, selects, options, (date) => "KW " + moment(date).week());
+                    dates = this.bucketDates(dataset, selects, options, (date) => "KW " + dayjs(date).week());
 
                 if (typeof onupdate === "function") {
                     onupdate(dates, value);
@@ -697,8 +704,8 @@ export class SensorChartApi {
      * @returns {Void}  -
      */
     updateHighestWorkloadMonth (thingId, selects, options, year, onupdate, onerror, onstart, oncomplete) {
-        const startDate = moment(year, "YYYY").toISOString(),
-            endDate = moment(year, "YYYY").add(1, "year").toISOString(),
+        const startDate = dayjs(year, "YYYY").toISOString(),
+            endDate = dayjs(year, "YYYY").add(1, "year").toISOString(),
             selectString = this.getSelectString(selects),
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime lt " + endDate + "))",
             values = {},
@@ -727,7 +734,7 @@ export class SensorChartApi {
                             return;
                         }
 
-                        month = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("MM");
+                        month = dayjs(this.parsePhenomenonTime(observation.phenomenonTime)).format("MM");
                         if (!Object.prototype.hasOwnProperty.call(sumMonths, month)) {
                             sumMonths[month] = 0;
                         }
@@ -739,7 +746,7 @@ export class SensorChartApi {
                         }
                     });
                     values[labelString] = bestSum;
-                    dates[labelString] = moment(bestMonth, "MM").format("MMMM");
+                    dates[labelString] = dayjs(bestMonth, "MM").format("MMMM");
                 });
 
                 if (typeof onupdate === "function") {
@@ -771,14 +778,14 @@ export class SensorChartApi {
     updateDataset (thingId, selects, options, timeSettings, onupdate, onerror, onstart, oncomplete, todayUntilOpt) {
         const from = timeSettings.from,
             until = timeSettings.until,
-            startDate = moment(from, "YYYY-MM-DD").toISOString(),
-            endDate = moment(until, "YYYY-MM-DD").add(1, "day").toISOString(),
+            startDate = dayjs(from, "YYYY-MM-DD").toISOString(),
+            endDate = dayjs(until, "YYYY-MM-DD").add(1, "day").toISOString(),
             selectString = this.getSelectString(selects),
 
             url = this.baseUrlHttp + "/Things(" + thingId + ")?$expand=Datastreams($filter=" + selectString + ";$expand=Observations($filter=phenomenonTime ge " + startDate + " and phenomenonTime le " + endDate + ";$orderby=phenomenonTime asc))",
 
             result = {},
-            todayUntil = todayUntilOpt || moment().format("YYYY-MM-DD");
+            todayUntil = todayUntilOpt || dayjs().format("YYYY-MM-DD");
 
         let labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + selects[select].value + "'").join(" und ");
 
@@ -786,8 +793,8 @@ export class SensorChartApi {
         return this.http.get(url, (dataset) => {
             if (this.checkForObservations(dataset)) {
                 dataset[0].Datastreams.forEach(datastream => {
-                    const dateLabelFrom = moment(from, "YYYY-MM-DD").format("DD.MM.YYYY"),
-                        dateLabelUntil = moment(until, "YYYY-MM-DD").format("DD.MM.YYYY"),
+                    const dateLabelFrom = dayjs(from, "YYYY-MM-DD").format("DD.MM.YYYY"),
+                        dateLabelUntil = dayjs(until, "YYYY-MM-DD").format("DD.MM.YYYY"),
                         dateLabel = dateLabelFrom === dateLabelUntil ? dateLabelFrom : dateLabelFrom + " bis " + dateLabelUntil;
 
                     labelString = Object.keys(selects).filter(select => !selects[select].overwritten).filter(select => Array.isArray(selects[select].value) && selects[select].value.length > 1).map((select) => selects[select].description + ": '" + datastream.properties[select] + "'").join(" und ");
@@ -807,7 +814,7 @@ export class SensorChartApi {
                             return;
                         }
 
-                        const datetime = moment(this.parsePhenomenonTime(observation.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
+                        const datetime = dayjs(this.parsePhenomenonTime(observation.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
 
                         result[labelString][datetime] = observation.result;
                     });
@@ -829,7 +836,7 @@ export class SensorChartApi {
                             return;
                         }
                         if (payload && Object.prototype.hasOwnProperty.call(payload, "result") && Object.prototype.hasOwnProperty.call(payload, "phenomenonTime")) {
-                            const datetime = moment(this.parsePhenomenonTime(payload.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
+                            const datetime = dayjs(this.parsePhenomenonTime(payload.phenomenonTime)).format("YYYY-MM-DD HH:mm:ss");
 
                             result[labelString][datetime] = payload.result;
 
@@ -891,7 +898,7 @@ export class SensorChartApi {
                 const idx = resultTime.indexOf("/");
 
                 resultTime = resultTime.slice(idx + 1);
-                datetime = moment(resultTime).format("YYYY-MM-DD HH:mm:ss");
+                datetime = dayjs(resultTime).format("YYYY-MM-DD HH:mm:ss");
 
                 onupdate(datetime);
             }
@@ -908,7 +915,7 @@ export class SensorChartApi {
                 this.mqttSubscribe(topic, {rh: 0}, (payload) => {
                     if (payload && Object.prototype.hasOwnProperty.call(payload, "resultTime")) {
                         if (typeof onupdate === "function") {
-                            const datetime = moment(payload.resultTime).format("YYYY-MM-DD HH:mm:ss");
+                            const datetime = dayjs(payload.resultTime).format("YYYY-MM-DD HH:mm:ss");
 
                             onupdate(datetime);
                         }
@@ -980,7 +987,7 @@ export class SensorChartApi {
                 }
 
                 // prohibit subscription by using the last param with a future date for today
-            }, onerror, false, false, moment().add(1, "month").format("YYYY-MM-DD"));
+            }, onerror, false, false, dayjs().add(1, "month").format("YYYY-MM-DD"));
         }, onerror);
     }
 

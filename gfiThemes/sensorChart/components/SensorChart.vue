@@ -1,12 +1,13 @@
 <script>
 import {mapGetters} from "vuex";
 
-import {SensorChartCache} from "../library/sensorChartCache";
-import {SensorChartApi} from "../library/sensorChartApi";
+import {SensorChartCache} from "../utils/sensorChartCache";
+import {SensorChartApi} from "../utils/sensorChartApi";
 import SensorChartInfo from "./SensorChartInfo.vue";
 import SensorChartChart from "./SensorChartChart.vue";
 import SensorChartFooter from "./SensorChartFooter.vue";
 import Multiselect from "vue-multiselect";
+import NavTab from "../../../../src/shared/modules/tabs/components/NavTab.vue";
 
 export default {
     name: "SensorChart",
@@ -14,7 +15,8 @@ export default {
         SensorChartInfo,
         SensorChartChart,
         SensorChartFooter,
-        Multiselect
+        Multiselect,
+        NavTab
     },
     props: {
         feature: {
@@ -54,7 +56,7 @@ export default {
         };
     },
     computed: {
-        ...mapGetters("Language", ["currentLocale"]),
+        ...mapGetters("Modules/Language", ["currentLocale"]),
         infoLabel: function () {
             return this.$t("additional:modules.tools.gfi.themes.sensorChart.infoLabel");
         },
@@ -104,6 +106,7 @@ export default {
         // When language is switched, the header will be rerendered
         currentLocale: function (newVal, oldVal) {
             if (oldVal) {
+
                 // this.setHeader(this.api, this.propThingId, this.propMeansOfTransportKfz);
                 this.setHeader(this.api, this.propThingId, this.meansOfTransportsCount[0], this.headerProperties);
                 this.setComponentKey(newVal);
@@ -300,7 +303,7 @@ export default {
          * @returns {Void} -
          */
         setActiveDefaultTab: function () {
-            this.$el.querySelector("li[value='infos'] a").click();
+            this.$el.querySelector("#infos-tab").click();
         },
 
         /**
@@ -309,9 +312,7 @@ export default {
          * @returns {Void} -
          */
         setCurrentTabId: function (evt) {
-            if (evt && evt.target && evt.target.hash) {
-                this.currentTabId = evt.target.hash.substring(1);
-            }
+            this.currentTabId = evt;
         },
 
 
@@ -322,6 +323,8 @@ export default {
          * @returns {Void} -
          */
         setSelectedValue: function (field, values) {
+            console.log(field)
+            console.log(values)
             const newSelects = {},
                 headerProperty = this.headerProperties.find(headerProperty => headerProperty.name === field);
 
@@ -504,6 +507,7 @@ export default {
                                 <label>
                                     <Multiselect
                                         v-model="headerProperty.model"
+                                        :id="headerProperty.name"
                                         :options="(headerProperty.isMultiple && headerProperty.isSelectAll)?[{'all': 'Alle', 'values': headerProperty.value}]:headerProperty.value"
                                         :group-values="(headerProperty.isMultiple && headerProperty.isSelectAll)? 'values' : undefined"
                                         :group-label="(headerProperty.isMultiple && headerProperty.isSelectAll)? 'all' : undefined"
@@ -520,7 +524,7 @@ export default {
                                         :allow-empty="false"
 
                                         :value="headerProperty.model"
-                                        @input="setSelectedValue(headerProperty.name, $event)"
+                                        @update:modelValue="setSelectedValue(headerProperty.name, $event)"
                                     />
                                 </label>
                             </td>
@@ -552,30 +556,25 @@ export default {
 
         <div>
             <ul
-                class="nav nav-tabs"
-                @click="setCurrentTabId"
-                @keypress="setCurrentTabId"
+                id="sensor-chart-tabs"
+                class="nav nav-tabs nav-justified"
+                role="tablist"
+                tabindex="0"
             >
-                <li
-                    value="infos"
-                    class="nav-item"
-                    :class="(currentTabId === 'infos') ? 'active' : ''"
-                >
-                    <a
-                        href="#infos"
-                        class="nav-link"
-                    >{{ infoLabel }}</a>
-                </li>
-                <li
-                    value="chart"
-                    class="nav-item"
-                    :class="(currentTabId === 'chart') ? 'active' : ''"
-                >
-                    <a
-                        href="#chart"
-                        class="nav-link"
-                    >{{ chartLabel }}</a>
-                </li>
+                <NavTab
+                    :id="'infos-tab'"
+                    :active="true"
+                    :target="'#infos'"
+                    :label="infoLabel"
+                    :interaction="() => setCurrentTabId('infos')"
+                />
+                <NavTab
+                    :id="'chart-tab'"
+                    :active="false"
+                    :target="'#chart'"
+                    :label="chartLabel"
+                    :interaction="() => setCurrentTabId('chart')"
+                />
             </ul>
             <div class="tab-content">
                 <div
@@ -709,7 +708,6 @@ export default {
     }
     .tab-content {
       border: 1px solid grey;
-      padding: 0 5px;
     }
      ul.nav-tabs {
       li {

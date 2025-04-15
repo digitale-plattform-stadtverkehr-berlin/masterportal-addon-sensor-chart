@@ -1,8 +1,0 @@
-{
-  "name": "Sensor Chart Addon",
-  "version": "1.0.0",
-  "description": "Shows Sensor Chart Data as Info and in Diagrams",
-  "dependencies": {
-    "vue-multiselect": "^2.1.7"
-  }
-}

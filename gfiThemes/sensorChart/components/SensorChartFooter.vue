@@ -1,5 +1,5 @@
 <script>
-import moment from "moment";
+import dayjs from "dayjs";
 
 export default {
     name: "SensorChartFooter",
@@ -65,7 +65,7 @@ export default {
          */
         setFooterLastUpdate: function (api, thingId, selects) {
             api.subscribeLastUpdate(thingId, selects, datetime => {
-                this.setLastUpdate(moment(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY, HH:mm:ss"));
+                this.setLastUpdate(dayjs(datetime, "YYYY-MM-DD HH:mm:ss").format("DD.MM.YYYY, HH:mm:ss"));
             }, errormsg => {
                 this.setLastUpdate("(aktuell keine Zeitangabe)");
                 console.warn("The last update received is incomplete:", errormsg);
